@@ -85,8 +85,8 @@ with st.sidebar:
 
 
 target_hint = st.text_input(
-    "Enter a repo URL",
-    placeholder="e.g. https://github.com/example/repo",
+    "Target Endpoint URL",
+    placeholder="e.g. http://127.0.0.1:8000",
     help="The backend `GET /queue` endpoint is currently hard-coded, so this value is not sent yet.",
 )
 
