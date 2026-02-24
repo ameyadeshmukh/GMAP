@@ -25,4 +25,3 @@ async def root():
 #         "task_status": task.status
 #     }
 
-# uvicorn api:app --reload
