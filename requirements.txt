@@ -1,3 +1,3 @@
-fastapi==0.133.0
+fastapi[standard]
 celery==5.6.2
 redis==7.2.0

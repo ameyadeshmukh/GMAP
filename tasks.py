@@ -18,3 +18,5 @@ def parse_results(results):
     print(f"Parsing results from scan...")
     time.sleep(1)
     return {"status": "parsed"}
+
+# celery -A tasks worker -l info -P threads --concurrency=8
