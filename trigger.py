@@ -1,4 +1,4 @@
-from tasks import run_nmap, run_nuclei
+from GMAP.backend.tasks import run_nmap, run_nuclei
 
 repo = "https://github.com/example/repo"
 

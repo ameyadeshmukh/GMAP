@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from tasks import run_nmap, run_nuclei, parse_results
+from GMAP.backend.tasks import run_nmap, run_nuclei, parse_results
 
 app = FastAPI()
 
