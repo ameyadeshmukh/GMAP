@@ -1,24 +1,7 @@
-from enum import Enum
-
-class JobState(str, Enum):
-    CREATED = "CREATED"
-    QUEUED = "QUEUED"
-    RUNNING = "RUNNING"
-    COMPLETED_SUCCESS = "COMPLETED_SUCCESS"
-    COMPLETED_FAILURE = "COMPLETED_FAILURE"
-
-
-# allowed transitions between states
-ALLOWED_TRANSITIONS = {
-    JobState.CREATED: [JobState.QUEUED],
-    JobState.QUEUED: [JobState.RUNNING],
-    JobState.RUNNING: [JobState.COMPLETED_SUCCESS, JobState.COMPLETED_FAILURE],
-    JobState.COMPLETED_SUCCESS: [],
-    JobState.COMPLETED_FAILURE: [],
-}
-
 import uuid
 from datetime import datetime
+
+from job_states import JobState, ALLOWED_TRANSITIONS
 
 
 class Job:
@@ -36,7 +19,7 @@ class Job:
     def transition_state(self, new_state: JobState):
         if new_state not in ALLOWED_TRANSITIONS[self.state]:
             raise ValueError(
-                f"Invalid transition: {self.state} → {new_state}"s
+                f"Invalid transition: {self.state} → {new_state}"
             )
         self.state = new_state
 
