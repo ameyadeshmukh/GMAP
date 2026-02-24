@@ -11,3 +11,5 @@ Autonomous agentic system integrating cybersecurity tools to automate vulnerabil
 - Run the celery app with this command 'celery -A tasks worker -l info -P threads --concurrency=8'
 
 - Run the Fastapi app with 'uvicorn api:app --reload'
+
+- The tasks are viewable at localhost:8081 
