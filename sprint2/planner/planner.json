@@ -1,0 +1,68 @@
+{
+  "phases": [
+    {
+      "id": "discovery",
+      "trigger": "",
+      "tools": [
+        {
+          "name": "nmap",
+          "purpose": "",
+          "base_command": "",
+          "variations": []
+        }
+      ],
+      "success_condition": "",
+      "on_success": "",
+      "on_failure": ""
+    },
+    {
+      "id": "fingerprinting",
+      "trigger": "",
+      "tools": [
+        {
+          "name": "httpx",
+          "purpose": "",
+          "base_command": "",
+          "variations": []
+        }
+      ],
+      "success_condition": "",
+      "on_success": "",
+      "on_failure": ""
+    },
+    {
+      "id": "vuln_detection",
+      "trigger": "",
+      "tools": [
+        {
+          "name": "nuclei",
+          "purpose": "",
+          "base_command": "",
+          "variations": []
+        }
+      ],
+      "success_condition": "",
+      "on_success": "",
+      "on_failure": ""
+    },
+    {
+      "id": "exploitation",
+      "trigger": "",
+      "tools": [
+        {
+          "name": "metasploit",
+          "purpose": "",
+          "base_command": "",
+          "variations": []
+        }
+      ],
+      "success_condition": "",
+      "on_success": "",
+      "on_failure": ""
+    }
+  ],
+  "global_rules": [
+    "always require human approval before exploitation",
+    "stay within defined scope"
+  ]
+}
