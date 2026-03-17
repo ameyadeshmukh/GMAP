@@ -1,9 +1,9 @@
 from typing import Any, Dict, Optional
 from sqlalchemy.orm import Session
-from audit_models import AuditLog
+from .models import AuditLog
 
-# Stucture of each entry/ levels only INFO is being used but having warn/error later on is needed to ensure everything is running correctly 
 ALLOWED_LEVELS = {"INFO", "WARN", "ERROR"}
+
 
 def audit_write(
     db: Session,
@@ -25,4 +25,3 @@ def audit_write(
         message=message,
         meta=meta or {},
     ))
-  
