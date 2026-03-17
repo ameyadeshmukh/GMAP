@@ -16,4 +16,3 @@ Password for user postgres: gmap
 7. Download the *DB local.session.sql* file from the GitHub repo. Alternatively, clone the GitHub repository using the **git clone** https://github.com/ameyadeshmukh/GMAP.git command.
 
 If you have further questions, reach out to me (Mark).
-
