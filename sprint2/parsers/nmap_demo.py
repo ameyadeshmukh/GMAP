@@ -24,6 +24,6 @@ print("Args:", " ".join(run.args))
 # Version
 print("Nmap version:", run.nmap_version.splitlines()[0] if run.nmap_version else "unknown")
 
-# Reusults in JSON
+# Results in JSON
 normalized = normalize_nmap_xml_to_json(run.stdout_xml, run.targets)
 pprint(normalized)
