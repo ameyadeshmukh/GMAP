@@ -1,11 +1,3 @@
-"""
-Job submission UI for Agentic Vulnerability Scanner.
-Streamlit frontend aligned to current backend API.
-
-Backend (repo root) currently exposes:
-- GET /queue: queues a scan task via Celery and returns a task id + basic result payload.
-"""
-
 from __future__ import annotations
 
 import os
@@ -24,14 +16,11 @@ class Settings:
 
 
 def _default_api_base_url() -> str:
-    # Streamlit supports both environment variables and secrets.toml.
-    # Prefer explicit configuration when available.
     try:
         value = st.secrets.get("API_BASE_URL")  # type: ignore[attr-defined]
         if value:
             return str(value)
     except Exception:
-        # Streamlit raises if no secrets.toml exists at all; fall back gracefully.
         pass
     return os.getenv("API_BASE_URL", "http://localhost:8000")
 
@@ -50,13 +39,18 @@ def _safe_json(resp: Response) -> Dict[str, Any]:
 
 
 def api_get(settings: Settings, path: str, *, params: Optional[Dict[str, Any]] = None) -> Response:
-    base = settings.api_base_url.rstrip("/")
-    url = f"{base}{path}"
+    url = f"{settings.api_base_url.rstrip('/')}{path}"
     return _http_session().get(url, params=params, timeout=settings.timeout_s)
 
 
-st.set_page_config(page_title="Agentic Vulnerability Scanner", page_icon="🔒")
+def api_post(settings: Settings, path: str, *, json: Dict[str, Any]) -> Response:
+    url = f"{settings.api_base_url.rstrip('/')}{path}"
+    return _http_session().post(url, json=json, timeout=settings.timeout_s)
+
+
+st.set_page_config(page_title="GMAP Scanner", page_icon="🔒")
 st.title("GMAP Scanner")
+
 with st.sidebar:
     st.header("Settings")
     api_base_url = st.text_input("Backend API base URL", value=_default_api_base_url())
@@ -77,37 +71,30 @@ with st.sidebar:
                 st.error(f"Could not reach `{settings.api_base_url}`.")
             except requests.exceptions.Timeout:
                 st.error("Ping timed out.")
-
     with cols[1]:
         st.link_button("Open docs", f"{settings.api_base_url.rstrip('/')}/docs")
 
 
-
-
-target_hint = st.text_input(
-    "Target Endpoint URL",
-    placeholder="e.g. http://127.0.0.1:8000",
-    help="The backend `GET /queue` endpoint is currently hard-coded, so this value is not sent yet.",
+target_url = st.text_input(
+    "Scan Target",
+    placeholder="e.g. http://192.168.1.10:8080 or 192.168.1.10",
 )
 
-col_a, col_b = st.columns(2)
-with col_a:
-    if st.button("Queue scan"):
+if st.button("Submit Scan"):
+    if not target_url.strip():
+        st.warning("Please enter a target before submitting.")
+    else:
         try:
-            with st.spinner("Queuing scan..."):
-                resp = api_get(settings, "/queue")
+            with st.spinner("Submitting scan..."):
+                resp = api_post(settings, "/targets", json={"target_url": target_url})
 
+            payload = _safe_json(resp)
             if resp.ok:
-                payload = _safe_json(resp)
-                st.success("Queued successfully.")
+                st.success(f"Job accepted — ID: `{payload.get('job_id')}`")
                 st.json(payload)
-
-                task_id = payload.get("task_id")
-                if task_id:
-                    st.write("**Task ID:**", task_id)
             else:
-                st.error(f"Backend request failed: HTTP {resp.status_code}")
-                st.json(_safe_json(resp))
+                st.error(f"Rejected: HTTP {resp.status_code}")
+                st.json(payload)
         except requests.exceptions.ConnectionError:
             st.error(f"Could not reach the backend at `{settings.api_base_url}`.")
         except requests.exceptions.Timeout:
@@ -115,6 +102,4 @@ with col_a:
         except Exception as e:
             st.error(f"Something went wrong: {e}")
 
-
 st.divider()
-

@@ -10,3 +10,19 @@ services:
       - REDIS_HOSTS=local:redis:6379
     ports:
       - "8081:8081"
+
+  postgres:
+    image: postgres:16
+    container_name: gmap_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: gmap
+      POSTGRES_PASSWORD: gmap
+      POSTGRES_DB: gmap
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
