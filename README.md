@@ -8,8 +8,8 @@ Autonomous agentic system integrating cybersecurity tools to automate vulnerabil
 
 - Run 'docker compose up -d' to run the redis and redis-commander containers.
 
-- Run the celery app with this command 'celery -A tasks worker -l info -P threads --concurrency=8'
+- Run the celery app with this command 'celery -A tasks worker -l info -P threads --concurrency=8' in '/backend' folder
 
-- Run the Fastapi app with 'uvicorn api:app --reload'
+- Run the Fastapi app with 'uvicorn api:app --reload' in '/backend' folder
 
-- The tasks are viewable at localhost:8081 
+- Celery tasks are viewable at localhost:8081 & FastAPI viewable at http://127.0.0.1:8000/
