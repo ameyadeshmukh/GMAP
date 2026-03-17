@@ -4,8 +4,19 @@ import time
 import xml.etree.ElementTree as ET
 from typing import Any, Dict, List
 
-# Function to convert nmap xml to json for the AI to interept the input
 def normalize_nmap_xml_to_json(xml_text: str, targets: List[str]) -> Dict[str, Any]:
+    """
+    Parses nmap XML output (-oX flag) into structured discovery data for the agent state.
+
+    Command that produces this output (from actions.py):
+        nmap -sV -p- --open -T4 {target_host}
+
+    Returns a dict with:
+        scan   - metadata about the run (tool, targets, timestamp)
+        hosts  - per-host results, each containing ip, status, hostnames,
+                 and a list of open ports with service/version info
+                 (maps to state.open_ports)
+    """
     # Creates the JSON Structure for the output
     result: Dict[str, Any] = {
         "scan": {
