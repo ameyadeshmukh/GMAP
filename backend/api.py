@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from tasks import run_nmap, run_nuclei, parse_results
+from tasks import run_nmap
 from ingestion import ingest_target
 from pydantic import BaseModel
 
