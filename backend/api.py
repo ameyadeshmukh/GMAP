@@ -1,9 +1,11 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+from sqlalchemy import desc
+
 from ingestion import ingest_target
 from db import get_db
 from store import get_job_execution
-from models import ExecutionTool
+from models import ExecutionTool, ToolRun
 from audit.router import router as audit_router
 
 
@@ -39,21 +41,33 @@ def get_job(job_id: str):
             .all()
         )
 
+        # get our structured output for each tool run in the job
+        tools_data = []
+        for t in tools:
+            tool_run = (
+                db.query(ToolRun)
+                .filter(ToolRun.execution_tool_id == t.id)
+                .order_by(desc(ToolRun.created_at))
+                .first()
+            )
+
+            tools_data.append({
+                "execution_tool_id": str(t.id),
+                "tool_id": str(t.tool_id),
+                "order": t.execution_order,
+                "status": t.status,
+                "celery_task_id": t.celery_task_id,
+                "started_at": t.started_at,
+                "completed_at": t.completed_at,
+
+                "input": tool_run.input_parameters if tool_run else None,
+                "output": tool_run.raw_output_json if tool_run else None,
+            })
+
         return {
             "job_id": str(job_exec.id),
             "status": job_exec.status,
             "started_at": job_exec.started_at,
             "completed_at": job_exec.completed_at,
-            "tools": [
-                {
-                    "execution_tool_id": str(t.id),
-                    "tool_id": str(t.tool_id),
-                    "order": t.execution_order,
-                    "status": t.status,
-                    "celery_task_id": t.celery_task_id,
-                    "started_at": t.started_at,
-                    "completed_at": t.completed_at,
-                }
-                for t in tools
-            ],
+            "tools": tools_data
         }
