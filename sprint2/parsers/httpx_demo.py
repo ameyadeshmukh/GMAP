@@ -8,8 +8,8 @@ import httpx
 from parse_httpx import parse_httpx
 
 TARGETS = [
-    "http://127.0.0.1:8000",
     "http://127.0.0.1:8081",
+    "http://www.google.com"
 ]
 
 TIMEOUT = 10
