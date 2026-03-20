@@ -1,0 +1,43 @@
+services:
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+
+  redis-commander:
+    image: rediscommander/redis-commander
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    ports:
+      - "8081:8081"
+
+  postgres:
+    image: postgres:16
+    container_name: gmap_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: gmap
+      POSTGRES_PASSWORD: gmap
+      POSTGRES_DB: gmap
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db:/docker-entrypoint-initdb.d
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: gmap_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@gmap.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+
+volumes:
+  pgdata:
+  pgadmin_data:
