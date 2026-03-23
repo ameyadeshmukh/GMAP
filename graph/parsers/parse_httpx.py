@@ -49,15 +49,15 @@ def parse_httpx(raw_output: str) -> Dict[str, Any]:
             continue
 
         url = entry.get("url", "")
-        status_code = entry.get("status-code")
+        status_code = entry.get("status_code")
 
         endpoint: Dict[str, Any] = {
             "url": url,
             "status_code": status_code,
             "title": entry.get("title"),
             "webserver": entry.get("webserver"),
-            "content_type": entry.get("content-type"),
-            "content_length": entry.get("content-length"),
+            "content_type": entry.get("content_type"),       
+            "content_length": entry.get("content_length"),
             "scheme": entry.get("scheme"),
             "host": entry.get("host"),
             "port": entry.get("port"),
