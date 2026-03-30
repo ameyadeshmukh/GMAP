@@ -1,6 +1,6 @@
-from graph.state import PenTestState
-from graph.parsers.tool_httpx import HttpxTool, HttpxPolicy
-from graph.parsers.parse_httpx import parse_httpx
+from state import PenTestState
+from parsers.tool_httpx import HttpxTool, HttpxPolicy
+from parsers.parse_httpx import parse_httpx
 
 
 def fingerprinting_node(state):
@@ -35,11 +35,17 @@ def fingerprinting(state: PenTestState) -> PenTestState:
         scheme = "https" if "https" in (p.get("service") or "") else "http"
         targets.append(f"{scheme}://{state['target_host']}:{p['port']}")
 
-    run = httpx.run(
-        targets=targets,
-        policy=HttpxPolicy(),
-        timeout_s=120,
-    )
+    retry_command = state.get("retry_command")
+
+    if retry_command:
+        log.append(f"[FINGERPRINTING] retrying with command: {retry_command}")
+        run = httpx.run_raw(retry_command)
+    else:
+        run = httpx.run(
+            targets=targets,
+            policy=HttpxPolicy(),
+            timeout_s=120,
+        )
     if run.exit_code != 0:
         log.append(f"httpx failed: {run.stderr}")
         return {**state, "action_log": log}
@@ -54,14 +60,15 @@ def fingerprinting(state: PenTestState) -> PenTestState:
     for endpoint in parsed["endpoints"]:
         merged_fingerprint[endpoint["url"]] = endpoint
 
-    log.append(f"httpx probed {len(targets)} URLs")
-    log.append(f"httpx accessible: {parsed['urls_accessible']}")
-    log.append(f"httpx tech stack: {parsed['tech_stack']}")
+    log.append(f"[FINGERPRINTING] httpx probed {len(targets)} URLs")
+    log.append(f"[FINGERPRINTING] httpx accessible: {parsed['urls_accessible']}")
+    log.append(f"[FINGERPRINTING] httpx tech stack: {parsed['tech_stack']}")
 
     return {
         **state,
         "urls_accessible":  merged_urls,
         "tech_stack":       merged_tech,
+        "retry_command": None,
         "http_fingerprint": merged_fingerprint,
         "action_log":       log,
     }

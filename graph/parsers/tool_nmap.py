@@ -45,6 +45,38 @@ class NmapTool:
             timeout=10,
         )
         return (cp.stdout or cp.stderr or "").strip()
+        
+    def run_raw(self, command: str, timeout_s: int = 300):
+    # take out leading nmap if the llm put it in
+        args = command.strip().split()
+        if args[0] == "nmap":
+            args[0] = self.nmap_path
+
+        if "-oX" not in args:
+            args.extend(["-oX", "-"])
+
+        nmap_version = self._get_version()
+        started_at = time.time()
+        cp = subprocess.run(
+            args,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=timeout_s,
+        )
+        finished_at = time.time()
+
+        return NmapRunResult(
+            intent="TCP_ALL_PORTS", 
+            targets=[],
+            args=args,
+            exit_code=cp.returncode,
+            started_at=started_at,
+            finished_at=finished_at,
+            stdout_xml=cp.stdout or "",
+            stderr=cp.stderr or "",
+            nmap_version=nmap_version,
+        )
 
 # Error condtions 
     def _validate(self, intent: NmapIntent, targets: List[str], policy: ScanPolicy) -> None:

@@ -14,16 +14,16 @@ ACTIONS = [
         },
         "command_template": "nmap -sV -p- --open -T4 {target_host}",
         "expected_output": (
-            "List of open ports including the port number, protocol, service name, "
-            " and service version for each, used for open_ports and services in state."
+            "List of open ports including port number, protocol, and service name. "
+            "Version information is not required — httpx will handle service fingerprinting. "
+            "Success is defined as finding at least one open port."
         ),
         "guidance": (
-            "Extract port, protocol, service name, and version for every open port. "
-            "Results should accumulate, record all findings. "
-            "open HTTP/HTTPS ports should feed directly into fingerprinting. "
+            "advance if open ports are found, even without version info. "
+            "Only retry if the scan timed out or no ports were found on a live host. "
             "If the scan is timing out, switch to --top-ports 1000. "
-            "If ports are found but versions are unclear, add -sC and specify -p {ports}. "
-            "If host appears down, break loop and report to user."
+            "If host appears down, ABORT and report to user. "
+            "Do not retry just because service versions are missing."
         )
     },
     {
@@ -71,7 +71,7 @@ ACTIONS = [
     },
     {
         # the graph should be directed to this stage when either something fails or before exploitation
-        "id": "human_review",
+        "id": "review",
         "description": "Pause the loop and present findings to user before exploitation",
         "preconditions": {
             "vulns_found": True,

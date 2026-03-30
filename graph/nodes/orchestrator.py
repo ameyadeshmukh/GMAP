@@ -1,5 +1,13 @@
-def orchestrator(state):
-    """
+import json
+from typing import Optional
+import os
+from langchain_openai import ChatOpenAI
+from state import PenTestState
+from planner.actions import ACTIONS 
+from dotenv import load_dotenv
+from langchain_core.messages import SystemMessage, HumanMessage
+ 
+"""
 
     this node determines valid actions based on state, uses the LLM to reason
     about the next action, updates state
@@ -8,21 +16,26 @@ def orchestrator(state):
     each time by sending state/planner to llm to make guided decisions
 
 
-    """
+"""
+
+load_dotenv()
 
 PHASE_ORDER = [
     "discovery",
     "fingerprinting",
     "vuln_detection",
-    "human_review",
+    "review",
     "exploitation",
     "documentation",
 ]
 
 ACTION_MAP = {a["id"]: a for a in ACTIONS}
 
-# llm = 
-
+llm = ChatOpenAI(
+    model="gpt-oss-120b",
+    api_key=os.getenv("OPENAI_API_KEY"),
+    base_url="https://llm-api.arc.vt.edu/api/v1"
+)
 
 SYSTEM_PROMPT = """You are the orchestrator of an autonomous penetration testing pipeline.
 
@@ -43,7 +56,7 @@ You must respond ONLY with valid JSON:
 {
     "decision": "<advance | retry | abort>",
     "reasoning": "<one concise sentence>",
-    "retry_hint": "<what to change on retry, or null if not retrying>",
+    "retry_command": "<full modified command string, or null if not retrying>",
     "correlations": ["<interesting links between findings>"]
 }
 
@@ -77,6 +90,7 @@ def _build_state_summary(state: PenTestState) -> dict:
         "target_host":         state.get("target_host"),
         "current_phase":       state.get("current_phase"),
         "iterations":          state.get("iterations", 0),
+        "http_fingerprint":    state.get("http_fingerprint", {}), 
         "open_ports":          state.get("open_ports", []),
         "urls_accessible":     state.get("urls_accessible", []),
         "tech_stack":          state.get("tech_stack", []),
@@ -98,11 +112,91 @@ def _build_prompt(phase: str, action: dict, state_summary: dict) -> str:
     )
 
 def orchestrator(state: PenTestState) -> PenTestState:
+    log = state.get("action_log", [])
+    current_phase = state.get("current_phase", "discovery")
+    iterations = state.get("iterations", 0)
 
-    # build state summary for LLM
+    # kicks off the loop
+    if current_phase == "start":
+        log.append("[ORCHESTRATOR] starting → discovery")
+        return {**state, "next_action": "discovery", "current_phase": "discovery", "action_log": log}
 
-    # feed llm state info, system prompt, and info from planner 
+    # hard stops
+    if iterations >= 10:
+        log.append("[ORCHESTRATOR] max iterations reached → documentation")
+        return {**state, "next_action": "documentation", "action_log": log}
 
-    # the llm should reason over the actions and the state to determine the next action
+    if state.get("human_decision") == "abort":
+        log.append("[ORCHESTRATOR] human aborted → documentation")
+        return {**state, "next_action": "documentation", "action_log": log}
 
-    # should return the next action with params and info for the next node
+    action = _get_action(current_phase)
+    if not action:
+        log.append(f"[ORCHESTRATOR] unknown phase {current_phase} → documentation")
+        return {**state, "next_action": "documentation", "action_log": log}
+
+    # only allows a phase to retry itself 3 times
+    retry_count = _count_retries(log, current_phase)
+    if retry_count >= 3:
+        log.append(f"[ORCHESTRATOR] max retries for {current_phase} → advancing")
+        next_phase = _next_phase(current_phase)
+        return {
+            **state,
+            "next_action": next_phase,
+            "current_phase": next_phase,  
+            "action_log": log,
+            "iterations": iterations + 1,
+        }
+
+    # call the llm
+
+    state_summary = _build_state_summary(state)
+    prompt = _build_prompt(current_phase, action, state_summary)
+
+    response = llm.invoke([
+        SystemMessage(content=SYSTEM_PROMPT),
+        HumanMessage(content=prompt)
+    ])
+
+    print("[LLM RAW OUTPUT]", response.content)
+
+    # parse llm response
+    try:
+        clean = response.content.strip().replace("```json", "").replace("```", "")
+        decision = json.loads(clean)
+    except Exception as e:
+        log.append(f"[ORCHESTRATOR] parse error: {e} → advancing")
+        decision = {
+            "decision": "advance",
+            "reasoning": "parse error fallback",
+            "retry_command": None,
+            "correlations": [],
+            "msf_modules": []
+        }
+
+    # determine next action
+    d = decision.get("decision", "advance").lower()
+    if d == "retry":
+        next_action = current_phase
+        log.append(f"[ORCHESTRATOR] RETRY {current_phase} | {decision.get('reasoning')} | command: {decision.get('retry_command')}")
+    elif d == "abort":
+        next_action = "documentation"
+        log.append(f"[ORCHESTRATOR] ABORT | {decision.get('reasoning')}")
+    else:
+        next_action = _next_phase(current_phase)
+        log.append(f"[ORCHESTRATOR] ADVANCE → {next_action} | {decision.get('reasoning')}")
+
+
+    correlations = list(set(state.get("correlations", []) + decision.get("correlations", [])))
+    msf_modules = list(set(state.get("msf_modules", []) + decision.get("msf_modules", [])))
+
+    return {
+        **state,
+        "next_action":  next_action,
+        "current_phase": next_action,
+        "correlations":  correlations,
+        "msf_modules":   msf_modules,
+        "retry_command": decision.get("retry_command"),
+        "action_log":    log,
+        "iterations":    iterations + 1,
+    }

@@ -1,15 +1,46 @@
-from state import PenTestState
 from graph import build_graph
+from dotenv import load_dotenv
 
+"""
+Entry point of the system. invokes the graph and starts everything up
+"""
+
+load_dotenv()
 
 def main():
-    """
-    Entry point of the system. invokes the graph and starts everything up
-    """
-    target = "TARGET_IP"
-    state = PenTestState(target)
     graph = build_graph()
-    graph.invoke(state)
+    # needs to get integrated with frontend
+    initial_state = {
+        "target_host":         "172.17.0.2",
+        "scope":               ["172.17.0.2"],
+        "exclusions":          [],
+        "engagement_rules":    "",
+        "open_ports":          [],
+        "urls_accessible":     [],
+        "tech_stack":          [],
+        "http_fingerprint":    {},
+        "vulnerabilities":     [],
+        "msf_modules":         [],
+        "attempted_modules":   [],
+        "exploitation_result": None,
+        "current_phase":       "start",
+        "next_action":         "discovery",
+        "correlations":        [],
+        "iterations":          0,
+        "awaiting_human":      False,
+        "human_decision":      None,
+        "action_log":          [],
+        "report":              "",
+    }
+
+    result = graph.invoke(initial_state)
+
+    print("\n=== ACTION LOG ===")
+    for entry in result["action_log"]:
+        print(entry)
+
+    print("\n=== REPORT ===")
+    print(result.get("report", "no report generated"))
 
 
 if __name__ == "__main__":

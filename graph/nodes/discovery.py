@@ -1,6 +1,6 @@
-from graph.state import PenTestState
-from graph.parsers.tool_nmap import NmapTool, ScanPolicy
-from graph.parsers.parse_nmap import normalize_nmap_xml_to_json
+from state import PenTestState
+from parsers.tool_nmap import NmapTool, ScanPolicy
+from parsers.parse_nmap import normalize_nmap_xml_to_json
 
 """
     first phase of pentesting, runs nmap to discover open ports and services
@@ -19,12 +19,18 @@ def discovery(state: PenTestState) -> PenTestState:
     target = state["target_host"]
     log = state.get("action_log", [])
 
-    run = nmap.run(
-        intent="TCP_ALL_PORTS",
-        targets=[target],
-        policy=ScanPolicy(allow_all_ports=True),
-        timeout_s=300,
-    )
+    retry_command = state.get("retry_command")
+
+    if retry_command:
+        log.append(f"[DISCOVERY] retrying with command: {retry_command}")
+        run = nmap.run_raw(retry_command)
+    else:
+        run = nmap.run(
+            intent="TCP_ALL_PORTS",
+            targets=[target],
+            policy=ScanPolicy(allow_all_ports=True),
+            timeout_s=300,
+        )
 
     if run.exit_code != 0:
         log.append(f"nmap failed: {run.stderr}")
@@ -48,11 +54,12 @@ def discovery(state: PenTestState) -> PenTestState:
         p for p in new_ports if p["port"] not in existing_port_numbers
     ]
 
-    log.append(f"nmap found {len(new_ports)} open ports on {target}")
-    log.append(f"nmap command: {' '.join(run.args)}")
+    log.append(f"[DISCOVERY] nmap found {len(new_ports)} open ports on {target}")
+    log.append(f"[DISCOVERY] nmap command: {' '.join(run.args)}")
 
     return {
         **state,
         "open_ports": merged_ports,
+        "retry_command": None,
         "action_log": log,
     }
