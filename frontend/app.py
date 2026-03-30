@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
-import streamlit as st
 import requests
+import streamlit as st
 from requests import Response
 
 
@@ -38,11 +38,6 @@ def _safe_json(resp: Response) -> Dict[str, Any]:
         return {"raw": resp.text}
 
 
-def api_get(settings: Settings, path: str, *, params: Optional[Dict[str, Any]] = None) -> Response:
-    url = f"{settings.api_base_url.rstrip('/')}{path}"
-    return _http_session().get(url, params=params, timeout=settings.timeout_s)
-
-
 def api_post(settings: Settings, path: str, *, json: Dict[str, Any]) -> Response:
     url = f"{settings.api_base_url.rstrip('/')}{path}"
     return _http_session().post(url, json=json, timeout=settings.timeout_s)
@@ -50,30 +45,7 @@ def api_post(settings: Settings, path: str, *, json: Dict[str, Any]) -> Response
 
 st.set_page_config(page_title="GMAP Scanner", page_icon="🔒")
 st.title("GMAP Scanner")
-
-with st.sidebar:
-    st.header("Settings")
-    api_base_url = st.text_input("Backend API base URL", value=_default_api_base_url())
-    timeout_s = st.number_input("Request timeout (seconds)", min_value=1, max_value=300, value=30, step=1)
-    settings = Settings(api_base_url=api_base_url, timeout_s=int(timeout_s))
-
-    cols = st.columns(2)
-    with cols[0]:
-        if st.button("Ping API"):
-            try:
-                r = api_get(settings, "/openapi.json")
-                if r.ok:
-                    st.success("Backend reachable.")
-                else:
-                    st.error(f"Backend error: HTTP {r.status_code}")
-                    st.json(_safe_json(r))
-            except requests.exceptions.ConnectionError:
-                st.error(f"Could not reach `{settings.api_base_url}`.")
-            except requests.exceptions.Timeout:
-                st.error("Ping timed out.")
-    with cols[1]:
-        st.link_button("Open docs", f"{settings.api_base_url.rstrip('/')}/docs")
-
+settings = Settings(api_base_url=_default_api_base_url(), timeout_s=30)
 
 target_url = st.text_input(
     "Scan Target",
@@ -90,7 +62,7 @@ if st.button("Submit Scan"):
 
             payload = _safe_json(resp)
             if resp.ok:
-                st.success(f"Job accepted — ID: `{payload.get('job_id')}`")
+                st.success(f"Job accepted - ID: `{payload.get('job_id')}`")
                 st.json(payload)
             else:
                 st.error(f"Rejected: HTTP {resp.status_code}")
@@ -101,5 +73,3 @@ if st.button("Submit Scan"):
             st.error("Request timed out.")
         except Exception as e:
             st.error(f"Something went wrong: {e}")
-
-st.divider()
