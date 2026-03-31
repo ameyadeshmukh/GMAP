@@ -78,6 +78,55 @@ class HttpxTool:
         if policy.follow_redirects:
             args.append("-follow-redirects")
         return args
+    def run_raw(self, command: str, timeout_s: int = 120) -> HttpxRunResult:
+        args = command.strip().split()
+        if args[0] == "httpx":
+            args[0] = self.httpx_path
+
+        if "-json" not in args:
+            args.append("-json")
+
+        targets = []
+        if "-u" in args:
+            idx = args.index("-u")
+            targets = [args[idx + 1]]
+            args.pop(idx)
+            args.pop(idx)
+        elif "-l" in args:
+            idx = args.index("-l")
+            targets = [args[idx + 1]]
+            args.pop(idx)
+            args.pop(idx)
+
+        if "-o" in args:
+            idx = args.index("-o")
+            args.pop(idx) 
+            args.pop(idx)  
+
+        stdin_input = "\n".join(targets)
+        httpx_version = self._get_version()
+
+        started_at = time.time()
+        cp = subprocess.run(
+            args,
+            input=stdin_input,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=timeout_s,
+        )
+        finished_at = time.time()
+
+        return HttpxRunResult(
+            targets=targets,
+            args=args,
+            exit_code=cp.returncode,
+            started_at=started_at,
+            finished_at=finished_at,
+            stdout_jsonl=cp.stdout or "",
+            stderr=cp.stderr or "",
+            httpx_version=httpx_version,
+        )
 
     def run(
         self,

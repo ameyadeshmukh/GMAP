@@ -36,6 +36,7 @@ class PenTestState(TypedDict):
     next_action:         str
     correlations:        List[str]   
     iterations:          int
+    retry_command: Optional[str]
 
     # human in the loop info
     awaiting_human: bool

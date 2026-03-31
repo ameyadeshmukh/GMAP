@@ -2,7 +2,7 @@ import subprocess
 from parsers.parse_nuclei import parse_nuclei
 
 
-def vuln_detection_node(state):
+def vuln_detection(state):
     """
     third phase, uses nuclei to scan for known vulnerabilities based on 
     information from the state

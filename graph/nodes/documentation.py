@@ -1,7 +1,7 @@
 import json
 
 
-def documentation_node(state):
+def documentation(state):
     """
     final phase after the pentest, generates the report with the results
 
@@ -12,7 +12,5 @@ def documentation_node(state):
     report = {
         
     }
-
-
 
     return state
