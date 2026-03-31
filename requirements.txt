@@ -8,3 +8,8 @@ redis==7.2.0
 SQLAlchemy==2.0.34
 psycopg2-binary==2.9.9
 pydantic>=2.11.7,<3.0.0
+
+# LangGraph agent
+langgraph>=1.1.4
+langchain-openai>=1.1.12
+python-dotenv>=1.0.0
