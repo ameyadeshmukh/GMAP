@@ -44,7 +44,7 @@ def probe(url: str) -> dict:
 
         return {
             "url": str(resp.url),
-            "status-code": resp.status_code,
+            "status_code": resp.status_code,
             "title": _extract_title(body),
             "webserver": resp.headers.get("server"),
             "content-type": content_type,

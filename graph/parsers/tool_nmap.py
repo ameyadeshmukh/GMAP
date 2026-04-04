@@ -108,7 +108,7 @@ class NmapTool:
             return [*args, policy.tcp_scan_type, "--top-ports", str(top_ports), *targets]
 
         if intent == "TCP_ALL_PORTS":
-            return [*args, policy.tcp_scan_type, "-p-", *targets]
+            return [*args, policy.tcp_scan_type, "-sV", "-p-", *targets]
 
         raise ValueError(f"Unknown intent: {intent}")
 
