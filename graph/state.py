@@ -8,6 +8,8 @@ class PenTestState(TypedDict):
     this is the essentially the agent's memory that will be needed at each node.
     The orchestrator node reads and updates this at every step of the loop.
     """
+    # For Database
+    job_id: str
 
     # target info 
     target_host:      str

@@ -6,6 +6,7 @@ from state import PenTestState
 from planner.actions import ACTIONS 
 from dotenv import load_dotenv
 from langchain_core.messages import SystemMessage, HumanMessage
+from backend.audit.persist_orchestrator import persist_orchestrator_output
  
 """
 
@@ -173,6 +174,16 @@ def orchestrator(state: PenTestState) -> PenTestState:
             "correlations": [],
             "msf_modules": []
         }
+   # Database logging
+    job_id = state.get("job_id")
+    if job_id:
+        persist_orchestrator_output(
+            job_id=job_id,
+            phase=current_phase,
+            payload=decision,
+            raw_llm_text=response.content,
+        )
+
 
     # determine next action
     d = decision.get("decision", "advance").lower()

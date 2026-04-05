@@ -1,5 +1,6 @@
 from graph import build_graph
 from dotenv import load_dotenv
+import uuid
 
 """
 Entry point of the system. invokes the graph and starts everything up
@@ -30,6 +31,7 @@ def main():
         "awaiting_human":      False,
         "human_decision":      None,
         "action_log":          [],
+        "job_id": str(uuid.uuid4()),
         "report":              "",
     }
 
