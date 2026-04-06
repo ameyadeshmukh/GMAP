@@ -8,6 +8,7 @@ import requests
 import streamlit as st
 from requests import Response
 
+api_get(settings, f"/jobs/{job_id}?tenant_id={tenant_id}")
 
 @dataclass(frozen=True)
 class Settings:

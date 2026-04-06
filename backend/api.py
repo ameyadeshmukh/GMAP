@@ -11,6 +11,7 @@ from audit.router import router as audit_router
 
 class TargetRequest(BaseModel):
     target_url: str
+    tenant_id: str
 
 
 app = FastAPI(title="GMAP API")
@@ -24,13 +25,17 @@ def read_root():
 
 @app.post("/targets")
 async def submit_target(req: TargetRequest):
-    return ingest_target(target_url=req.target_url)
+    return ingest_target(
+        target_url=req.target_url,
+        tenant_id=req.tenant_id 
+        )
 
 
 @app.get("/jobs/{job_id}")
-def get_job(job_id: str):
+def get_job(job_id: str, tenant_id: str):
+    tenant_uuid = uuid.UUID(tenant_id)
     with get_db() as db:
-        job_exec = get_job_execution(db, job_id)
+        job_exec = get_job_execution(db, job_id, tenant_uuid)
         if not job_exec:
             raise HTTPException(status_code=404, detail="Job not found")
 

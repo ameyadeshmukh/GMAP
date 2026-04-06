@@ -2,19 +2,33 @@ import uuid
 from sqlalchemy.orm import Session
 from models import ExecutionTool, JobExecution
 
+def create_job_execution(db: Session, tenant_id: uuid.UUID, target_url: str):
+    job = JobExecution(
+        id=uuid.uuid4(),
+        tenant_id=tenant_id,
+        target_url=target_url,
+        status="pending"
+    )
+    db.add(job)
+    db.flush()
+    return job
+
+def get_tool_by_name(db, name):
+    return db.query(Tool).filter(Tool.name == name).first()
+
+
 # Fixed UUIDs matching the seed data in db/schema.sql
-DEFAULT_TENANT_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
-NMAP_TOOL_ID      = uuid.UUID("00000000-0000-0000-0000-000000000002")
-NUCLEI_TOOL_ID    = uuid.UUID("00000000-0000-0000-0000-000000000003")
-HTTPX_TOOL_ID     = uuid.UUID("00000000-0000-0000-0000-000000000004")
+#NMAP_TOOL_ID      = uuid.UUID("00000000-0000-0000-0000-000000000002")
+#NUCLEI_TOOL_ID    = uuid.UUID("00000000-0000-0000-0000-000000000003")
+#HTTPX_TOOL_ID     = uuid.UUID("00000000-0000-0000-0000-000000000004")
 
 
-def get_job_execution(db: Session, job_id: str) -> JobExecution | None:
-    return db.query(JobExecution).filter(JobExecution.id == job_id).first()
+def get_job_execution(db: Session, job_id: str, tenant_id: uuid.UUID):
+    return db.query(JobExecution).filter(JobExecution.id == job_id, JobExecutionTool.tenant_id == tenant_id).first()
 
 
-def get_execution_tool(db: Session, execution_tool_id: str) -> ExecutionTool | None:
-    return db.query(ExecutionTool).filter(ExecutionTool.id == execution_tool_id).first()
+def get_execution_tool(db: Session, execution_tool_id: str, tenant_id: uuid.UUID):
+    return db.query(ExecutionTool).filter(ExecutionTool.id == execution_tool_id, ExecutionTool.tenant_id ==tenant_id).first()
 
 
 def all_tools_done(db: Session, job_execution_id: str) -> bool:

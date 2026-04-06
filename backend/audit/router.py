@@ -19,19 +19,22 @@ def audit_list_for_job(
     with get_db() as db:
         rows = (
             db.query(AuditLog)
-            .filter(AuditLog.job_id == job_uuid)
+            .filter(AuditLog.entity_id == job_uuid)
             .order_by(AuditLog.created_at.asc())
             .limit(limit)
             .all()
-        )
+            )
 
         return [
             {
-                "created_at": r.created_at,
-                "level": r.level,
-                "event_type": r.event_type,
-                "message": r.message,
-                "meta": r.meta,
-            }
-            for r in rows
-        ]
+                "id": str(audit.id),
+                "action": audit.action,
+                "entity_type": audit.entity_type,
+                "entity_id": str(audit.entity_id),
+                "user_id": str(audit.user_id) if audit.user_id else None,
+                "ip_address": audit.ip_address,
+                "user_agent": audit.user_agent,
+                "created_at": audit.created_at,
+                }
+                for audit in rows
+                ]

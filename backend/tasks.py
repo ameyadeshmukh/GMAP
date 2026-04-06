@@ -1,6 +1,5 @@
 import time
-from datetime import datetime, UTC
-
+from datetime import datetime, timezone
 from celery_app import app
 from db import get_db
 from models import ExecutionTool, JobExecution, ToolRun
@@ -14,11 +13,11 @@ def _mark_running(db, execution_tool_id: str) -> str:
     if not et:
         raise ValueError(f"ExecutionTool {execution_tool_id} not found")
     et.status = "running"
-    et.started_at = datetime.now(UTC)
+    et.started_at = datetime.now(timezone.utc)
     job_exec = db.query(JobExecution).filter_by(id=et.job_execution_id).first()
     if job_exec and job_exec.status == "queued":
         job_exec.status = "running"
-        job_exec.started_at = datetime.now(UTC)
+        job_exec.started_at = datetime.now(timezone.utc)
     return str(et.job_execution_id)
 
 
@@ -27,7 +26,7 @@ def _mark_done(db, execution_tool_id: str, result: dict, job_execution_id: str, 
     et = db.query(ExecutionTool).filter_by(id=execution_tool_id).first()
     if et:
         et.status = "completed"
-        et.completed_at = datetime.now(UTC)
+        et.completed_at = datetime.now(timezone.utc)
         db.add(ToolRun(
             execution_tool_id=et.id,
             input_parameters=input_payload, # added tool input parameters
@@ -41,7 +40,7 @@ def _mark_done(db, execution_tool_id: str, result: dict, job_execution_id: str, 
         job_exec = db.query(JobExecution).filter_by(id=job_execution_id).first()
         if job_exec:
             job_exec.status = final_status
-            job_exec.completed_at = datetime.now(UTC)
+            job_exec.completed_at = datetime.now(timezone.utc)
 
 # function for standardized JSON tool output
 def build_json_tool_result(tool_name: str, execution_id: str, status: str, data: dict = None, error: dict = None):
@@ -49,7 +48,7 @@ def build_json_tool_result(tool_name: str, execution_id: str, status: str, data:
         "tool_name": tool_name,
         "execution_id": execution_id,
         "status": status,
-        "timestamp": datetime.now(UTC).isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "data": data or {},
         "error": error
     }
