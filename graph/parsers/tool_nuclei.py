@@ -59,6 +59,56 @@ class NucleiTool:
         )
         return (cp.stdout or cp.stderr or "").strip()
 
+    def run_raw(self, command: str, timeout_s: int = 600) -> NucleiRunResult:
+        """
+        Run nuclei with a raw command string (for retry_command from orchestrator).
+        """
+        args = command.strip().split()
+        if args[0] == "nuclei":
+            args[0] = self.nuclei_path
+
+        # Ensure JSON output
+        if "-json" not in args:
+            args.append("-json")
+
+        # Extract targets if provided via -u flag
+        targets = []
+        if "-u" in args:
+            idx = args.index("-u")
+            targets = [args[idx + 1]]
+            args.pop(idx)
+            args.pop(idx)
+        elif "-l" in args:
+            idx = args.index("-l")
+            targets = [args[idx + 1]]
+            args.pop(idx)
+            args.pop(idx)
+
+        stdin_input = "\n".join(targets) if targets else ""
+        nuclei_version = self._get_version()
+
+        started_at = time.time()
+        cp = subprocess.run(
+            args,
+            input=stdin_input,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=timeout_s,
+        )
+        finished_at = time.time()
+
+        return NucleiRunResult(
+            targets=targets,
+            args=args,
+            exit_code=cp.returncode,
+            started_at=started_at,
+            finished_at=finished_at,
+            stdout_jsonl=cp.stdout or "",
+            stderr=cp.stderr or "",
+            nuclei_version=nuclei_version,
+        )
+
     def _validate(self, targets: List[str], policy: NucleiPolicy) -> None:
         if not targets:
             raise ValueError("targets must not be empty")
