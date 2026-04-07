@@ -1,5 +1,6 @@
 from datetime import datetime
 from state import PenTestState
+from parsers.severity_normalizer import normalize_finding, get_severity_distribution
 
 
 def documentation(state: PenTestState) -> PenTestState:
@@ -104,22 +105,39 @@ def documentation(state: PenTestState) -> PenTestState:
     vulnerabilities = state.get("vulnerabilities", [])
     
     if vulnerabilities:
+        # Add normalized severity scores to each vulnerability
+        scored_vulns = []
+        for vuln in vulnerabilities:
+            severity_score = normalize_finding(vuln, "nuclei")
+            vuln_with_score = {**vuln, "normalized_score": severity_score.score, "normalized_level": severity_score.level.value}
+            scored_vulns.append(vuln_with_score)
+        
+        # Sort by normalized score (highest first)
+        scored_vulns.sort(key=lambda v: v["normalized_score"], reverse=True)
+        
         # Group by severity
         severity_groups = {"critical": [], "high": [], "medium": [], "low": [], "info": [], "unknown": []}
-        for vuln in vulnerabilities:
+        for vuln in scored_vulns:
             severity = vuln.get("severity", "unknown").lower()
             if severity in severity_groups:
                 severity_groups[severity].append(vuln)
             else:
                 severity_groups["unknown"].append(vuln)
         
-        # Summary
+        # Summary with normalized scores
         report_sections.append(f"\n**Total Vulnerabilities:** {len(vulnerabilities)}\n")
         report_sections.append("**Severity Breakdown:**")
         for severity in ["critical", "high", "medium", "low", "info"]:
             count = len(severity_groups[severity])
             if count > 0:
                 report_sections.append(f"- {severity.upper()}: {count}")
+        
+        # Show severity distribution from normalizer
+        severity_dist = get_severity_distribution(vulnerabilities, "nuclei")
+        report_sections.append("\n**Normalized Severity Distribution:**")
+        for level in ["critical", "high", "medium", "low", "info"]:
+            if severity_dist[level] > 0:
+                report_sections.append(f"- {level.upper()}: {severity_dist[level]}")
         report_sections.append("")
         
         # Detailed findings by severity
@@ -133,6 +151,7 @@ def documentation(state: PenTestState) -> PenTestState:
             for vuln in vulns:
                 report_sections.append(f"**{vuln.get('name', 'Unknown Vulnerability')}**")
                 report_sections.append(f"- **Template ID:** {vuln.get('template_id', 'N/A')}")
+                report_sections.append(f"- **Normalized Score:** {vuln.get('normalized_score', 'N/A')}/12 ({vuln.get('normalized_level', 'N/A').upper()})")
                 if vuln.get('cve_id'):
                     report_sections.append(f"- **CVE:** {vuln['cve_id']}")
                 report_sections.append(f"- **URL:** {vuln.get('url', 'N/A')}")
@@ -160,17 +179,25 @@ def documentation(state: PenTestState) -> PenTestState:
     results = state.get("exploitation_result", [])
     
     if results:
-        successful = [r for r in results if r.get("success")]
-        failed = [r for r in results if not r.get("success")]
+        # Add normalized severity scores
+        scored_results = []
+        for result in results:
+            severity_score = normalize_finding(result, "metasploit")
+            result_with_score = {**result, "normalized_score": severity_score.score}
+            scored_results.append(result_with_score)
+        
+        successful = [r for r in scored_results if r.get("success")]
+        failed = [r for r in scored_results if not r.get("success")]
         
         report_sections.append(f"\n**Total Attempts:** {len(results)}")
-        report_sections.append(f"**Successful:** {len(successful)}")
-        report_sections.append(f"**Failed:** {len(failed)}\n")
+        report_sections.append(f"**Successful:** {len(successful)} (Normalized Score: 12/12 - CRITICAL)")
+        report_sections.append(f"**Failed:** {len(failed)} (Normalized Score: 0/12 - INFO)\n")
         
         if successful:
             report_sections.append("### Successful Exploits\n")
             for result in successful:
                 report_sections.append(f"**Module:** {result.get('module', 'N/A')}")
+                report_sections.append(f"- **Severity:** CRITICAL (12/12)")
                 if result.get('session_type'):
                     report_sections.append(f"- **Session Type:** {result['session_type']}")
                 if result.get('output'):
@@ -180,7 +207,7 @@ def documentation(state: PenTestState) -> PenTestState:
         if failed:
             report_sections.append("### Failed Exploitation Attempts\n")
             for result in failed:
-                report_sections.append(f"- **Module:** {result.get('module', 'N/A')}")
+                report_sections.append(f"- **Module:** {result.get('module', 'N/A')} (Severity: INFO)")
                 if result.get('output'):
                     report_sections.append(f"  - Error: {result['output']}")
             report_sections.append("")
@@ -223,7 +250,16 @@ def documentation(state: PenTestState) -> PenTestState:
     
     # Footer
     report_sections.append("---")
-    report_sections.append("*End of Report*")
+    report_sections.append("\n## Severity Scale Reference\n")
+    report_sections.append("This report uses a normalized severity scoring system (1-12 scale) across all tools:\n")
+    report_sections.append("| Score Range | Severity Level | Description |")
+    report_sections.append("|-------------|----------------|-------------|")
+    report_sections.append("| 0 | INFO | Informational findings, no immediate risk |")
+    report_sections.append("| 1-3 | LOW | Minor issues, low exploitability |")
+    report_sections.append("| 4-6 | MEDIUM | Moderate risk, requires attention |")
+    report_sections.append("| 7-9 | HIGH | Serious vulnerabilities, high priority |")
+    report_sections.append("| 10-12 | CRITICAL | Severe issues, immediate action required |")
+    report_sections.append("\n*End of Report*")
     
     # Join all sections
     report = "\n".join(report_sections)
