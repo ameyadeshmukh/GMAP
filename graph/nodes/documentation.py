@@ -25,13 +25,14 @@ def documentation(state: PenTestState) -> PenTestState:
     report_sections.append("## Executive Summary")
     vuln_count = len(state.get("vulnerabilities", []))
     exploit_results = state.get("exploitation_result", [])
-    successful_exploits = sum(1 for e in exploit_results if e.get("success"))
+    if exploit_results:
+        successful_exploits = sum(1 for e in exploit_results if e.get("success"))
     
     report_sections.append(f"- **Target:** {state.get('target_host', 'N/A')}")
     report_sections.append(f"- **Open Ports:** {len(state.get('open_ports', []))}")
     report_sections.append(f"- **Accessible URLs:** {len(state.get('urls_accessible', []))}")
     report_sections.append(f"- **Vulnerabilities Found:** {vuln_count}")
-    report_sections.append(f"- **Successful Exploits:** {successful_exploits}/{len(exploit_results)}\n")
+    #report_sections.append(f"- **Successful Exploits:** {successful_exploits}/{len(exploit_results)}\n")
     
     # Target Information
     report_sections.append("## Target Information")

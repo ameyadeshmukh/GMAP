@@ -20,10 +20,14 @@ def fingerprinting(state: PenTestState) -> PenTestState:
     log = state.get("action_log", [])
 
     # build URL list from ports found in discovery
-    http_services = ["http", "https", "http-alt", "ssl/http", "ssl/https, http-proxy"]
+    COMMON_HTTP_PORTS = {80, 443, 8080, 8443, 8983, 8888, 8008, 9200, 9000, 3000, 5000}
+
+    http_services = {"http", "https", "http-alt", "ssl/http", "http-proxy"}
+
     http_ports = [
         p for p in state.get("open_ports", [])
         if p.get("service") in http_services
+        or p.get("port") in COMMON_HTTP_PORTS
     ]
     if not http_ports:
         log.append("no HTTP/HTTPS ports found, skipping")

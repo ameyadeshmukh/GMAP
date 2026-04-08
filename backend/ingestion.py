@@ -1,11 +1,10 @@
 import ipaddress
 
 from validation import validate_target
-from tasks import run_nmap, run_nuclei
+from tasks import run_graph
 from db import get_db
 from models import Target, JobDefinition, JobExecution, ExecutionTool
-from store import DEFAULT_TENANT_ID, NMAP_TOOL_ID, NUCLEI_TOOL_ID
-
+from store import DEFAULT_TENANT_ID, GRAPH_TOOL_ID
 
 def _detect_type(target: str) -> str:
     if target.startswith("http://") or target.startswith("https://"):
@@ -64,28 +63,18 @@ def ingest_target(target_url: str):
         db.add(job_exec)
         db.flush()
 
-        nmap_et = ExecutionTool(
+        graph_et = ExecutionTool(
             job_execution_id=job_exec.id,
-            tool_id=NMAP_TOOL_ID,
+            tool_id=GRAPH_TOOL_ID,
             execution_order=1,
             status="queued",
-        )
-        nuclei_et = ExecutionTool(
-            job_execution_id=job_exec.id,
-            tool_id=NUCLEI_TOOL_ID,
-            execution_order=2,
-            status="queued",
-        )
-        db.add_all([nmap_et, nuclei_et])
+        )       
+        db.add(graph_et)
         db.flush()
 
-        # TODO: Replace with a sequential Celery chain once the LangGraph agent is in place.
-        # Intended order: nmap → agent decision → httpx → agent decision → nuclei
-        task1 = run_nmap.delay(normalized, str(nmap_et.id))
-        task2 = run_nuclei.delay(normalized, str(nuclei_et.id))
+        task = run_graph.delay(normalized, str(graph_et.id))
+        graph_et.celery_task_id = task.id
 
-        nmap_et.celery_task_id = task1.id
-        nuclei_et.celery_task_id = task2.id
 
         job_id = str(job_exec.id)
 

@@ -39,10 +39,12 @@ def vuln_detection(state: PenTestState) -> PenTestState:
             policy=policy,
             timeout_s=600,
         )
-    
-    if run.exit_code != 0:
-        log.append(f"[VULN_DETECTION] nuclei failed: {run.stderr}")
-        return {**state, "action_log": log}
+        log.append(f"[VULN_DETECTION] stderr: {run.stderr[:500]}")
+        log.append(f"[VULN_DETECTION] stdout raw: {repr(run.stdout_jsonl[:500])}")
+
+        # if run.exit_code != 0:
+    #     log.append(f"[VULN_DETECTION] nuclei failed: {run.stderr}")
+    #     return {**state, "action_log": log}
     
     # Parse nuclei JSONL output
     parsed = parse_nuclei(run.stdout_jsonl)

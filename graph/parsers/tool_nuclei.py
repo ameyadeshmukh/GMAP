@@ -25,7 +25,6 @@ class NucleiRunResult:
     exit_code: int
     started_at: float
     finished_at: float
-    # Raw JSONL output — one JSON object per finding, fed into parse_nuclei
     stdout_jsonl: str
     stderr: str
     nuclei_version: str
@@ -40,7 +39,7 @@ class NucleiTool:
         echo -e "http://target:80\\nhttps://target:443" | nuclei -json ...
 
     Flags used (from actions.py vuln_detection command):
-        -json            one JSON object per finding
+        -jsonl            one JSON object per finding
         -severity        filter by severity levels
         -silent          suppress banner output
         -no-color        disable ANSI color codes in output
@@ -67,9 +66,8 @@ class NucleiTool:
         if args[0] == "nuclei":
             args[0] = self.nuclei_path
 
-        # Ensure JSON output
-        if "-json" not in args:
-            args.append("-json")
+        if "-jsonl" not in args:
+            args.append("-jsonl")
 
         # Extract targets if provided via -u flag
         targets = []
@@ -118,7 +116,7 @@ class NucleiTool:
     def _build_args(self, policy: NucleiPolicy) -> List[str]:
         args = [
             self.nuclei_path,
-            "-json",
+            "-jsonl",
             "-silent",
             "-no-color",
             "-severity", policy.severity,

@@ -33,7 +33,7 @@ ACTIONS = [
             "ports_found": True,
             "http_services_found": True
         },
-        "command_template": "httpx -u {http_urls_from_open_ports} -json -tech-detect -status-code -title -web-server",
+        "command_template": "httpx -u {http_urls_from_open_ports} -jsonl -tech-detect -status-code -title -web-server",
         "expected_output": (
             "For each probed URL, output should include status code, page title, web server header, "
             "detected technologies with versions. Used to populate urls_accessible, "
@@ -54,7 +54,7 @@ ACTIONS = [
             "ports_found": True,
             "urls_found": True
         },
-        "command_template": "nuclei -u {urls_accessible} -json -severity critical,high,medium",
+        "command_template": "nuclei -u {urls_accessible} -jsonl -severity critical,high,medium",
         "expected_output": (
             "Output should include a list of confirmed vulnerabilities each with a template ID, CVE ID, "
             "severity, affected URL, description. Used to populate vulnerabilities in state."
