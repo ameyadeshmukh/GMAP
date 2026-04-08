@@ -83,7 +83,10 @@ class HttpxTool:
         if args[0] == "httpx":
             args[0] = self.httpx_path
 
-        if "-json" not in args:
+        # Replace -jsonl with -json (LLM often generates -jsonl)
+        if "-jsonl" in args:
+            args[args.index("-jsonl")] = "-json"
+        elif "-json" not in args:
             args.append("-json")
 
         targets = []

@@ -354,7 +354,8 @@ INSERT INTO tenants (id, name, subscription_tier) VALUES
 ON CONFLICT DO NOTHING;
 
 INSERT INTO tools (id, name, version, category) VALUES
-    ('00000000-0000-0000-0000-000000000002', 'nmap',   '7.94', 'scanner'),
-    ('00000000-0000-0000-0000-000000000003', 'nuclei', '3.0',  'scanner'),
-    ('00000000-0000-0000-0000-000000000004', 'httpx',  '1.3',  'scanner')
+('00000000-0000-0000-0000-000000000002', 'nmap',   '7.94', 'scanner'),
+('00000000-0000-0000-0000-000000000003', 'nuclei', '3.0',  'scanner'),
+('00000000-0000-0000-0000-000000000004', 'httpx',  '1.3',  'scanner'),
+('00000000-0000-0000-0000-000000000005', 'metasploit', '6.3', 'exploit  ')
 ON CONFLICT DO NOTHING;

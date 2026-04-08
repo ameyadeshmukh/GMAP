@@ -13,7 +13,6 @@ def fingerprinting_node(state):
     call the parser for httpx and update the state
     """
 
-
 httpx = HttpxTool(httpx_path="pd-httpx")
 
 def fingerprinting(state: PenTestState) -> PenTestState:

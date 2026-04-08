@@ -1,19 +1,28 @@
 from graph import build_graph
 from dotenv import load_dotenv
 import uuid
-
-"""
-Entry point of the system. invokes the graph and starts everything up
-"""
+import sys
 
 load_dotenv()
 
 def main():
+    # Default target
+    target = sys.argv[1] if len(sys.argv) > 1 else "127.0.0.1:9090"
+
+    # Split IP and optional port
+    if ":" in target:
+        ip, port = target.split(":")
+        scan_target = f"{ip} -p {port}"
+    else:
+        ip = target
+        port = None
+        scan_target = ip  # will let tools scan all ports by default
+
     graph = build_graph()
-    # needs to get integrated with frontend
+
     initial_state = {
-        "target_host":         "172.17.0.2",
-        "scope":               ["172.17.0.2"],
+        "target_host":         scan_target,
+        "scope":               [ip],
         "exclusions":          [],
         "engagement_rules":    "",
         "open_ports":          [],
@@ -43,7 +52,6 @@ def main():
 
     print("\n=== REPORT ===")
     print(result.get("report", "no report generated"))
-
 
 if __name__ == "__main__":
     main()

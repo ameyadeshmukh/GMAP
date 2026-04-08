@@ -38,6 +38,12 @@ services:
     depends_on:
       - postgres
 
+  dvwa:
+    image: vulnerables/web-dvwa
+    container_name: gmap_dvwa
+    ports:
+      - "9090:80"
+
 volumes:
   pgdata:
   pgadmin_data:
