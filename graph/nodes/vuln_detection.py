@@ -1,6 +1,6 @@
-from state import PenTestState
-from parsers.tool_nuclei import NucleiTool, NucleiPolicy
-from parsers.parse_nuclei import parse_nuclei
+from graph.state import PenTestState
+from graph.parsers.tool_nuclei import NucleiTool, NucleiPolicy
+from graph.parsers.parse_nuclei import parse_nuclei
 
 
 def vuln_detection(state: PenTestState) -> PenTestState:

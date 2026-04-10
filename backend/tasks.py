@@ -1,12 +1,16 @@
 import time
 from datetime import datetime, timezone
+import os
 import sys
-sys.path.append("/root/capstone/graph")
+from dotenv import load_dotenv
 
-from celery_app import app
-from db import get_db
-from models import ExecutionTool, JobExecution, ToolRun
-from store import all_tools_done, any_tool_failed
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(BASE_DIR)
+
+from backend.celery_app import app
+from backend.db import get_db
+from backend.models import ExecutionTool, JobExecution, ToolRun
+from backend.store import all_tools_done, any_tool_failed
 import re
 
 
@@ -56,7 +60,7 @@ def _mark_failed(db, execution_tool_id: str, error: str, job_execution_id: str):
     et = db.query(ExecutionTool).filter_by(id=execution_tool_id).first()
     if et:
         et.status = "failed"
-        et.completed_at = datetime.now(UTC)
+        et.completed_at = datetime.now(timezone.utc)
         db.add(ToolRun(
             execution_tool_id=et.id,
             input_parameters={},
@@ -80,7 +84,8 @@ def build_json_tool_result(tool_name: str, execution_id: str, status: str, data:
 @app.task
 def run_graph(target_url: str, execution_tool_id: str):
     """Invoke the LangGraph agent for the given target and track it in the DB."""
-    from graph import build_graph
+    from graph.graph import build_graph
+    # load_dotenv()
 
     with get_db() as db:
         job_execution_id = _mark_running(db, execution_tool_id)

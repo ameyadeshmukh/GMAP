@@ -1,6 +1,6 @@
 from datetime import datetime
-from state import PenTestState
-from parsers.severity_normalizer import normalize_finding, get_severity_distribution
+from graph.state import PenTestState
+from graph.parsers.severity_normalizer import normalize_finding, get_severity_distribution
 
 
 def documentation(state: PenTestState) -> PenTestState:

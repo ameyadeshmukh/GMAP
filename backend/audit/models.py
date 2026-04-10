@@ -1,7 +1,7 @@
 import uuid
 from sqlalchemy import Column, DateTime, String, Text, func, Index
 from sqlalchemy.dialects.postgresql import UUID, JSONB
-from db import Base
+from backend.db import Base
 
 
 class AuditLog(Base):

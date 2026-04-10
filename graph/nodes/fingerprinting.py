@@ -1,6 +1,6 @@
-from state import PenTestState
-from parsers.tool_httpx import HttpxTool, HttpxPolicy
-from parsers.parse_httpx import parse_httpx
+from graph.state import PenTestState
+from graph.parsers.tool_httpx import HttpxTool, HttpxPolicy
+from graph.parsers.parse_httpx import parse_httpx
 
 
 def fingerprinting_node(state):
