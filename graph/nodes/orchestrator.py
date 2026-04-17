@@ -2,8 +2,8 @@ import json
 from typing import Optional
 import os
 from langchain_openai import ChatOpenAI
-from graph.state import PenTestState
-from graph.planner.actions import ACTIONS
+from state import PenTestState
+from planner.actions import ACTIONS 
 from dotenv import load_dotenv
 from langchain_core.messages import SystemMessage, HumanMessage
 #from backend.audit.persist_orchestrator import persist_orchestrator_output
@@ -19,7 +19,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 
 """
 
-#load_dotenv()
+load_dotenv()
 
 PHASE_ORDER = [
     "discovery",

@@ -1,7 +1,6 @@
-from graph.state import PenTestState
-from graph.parsers.tool_httpx import HttpxTool, HttpxPolicy
-from graph.parsers.parse_httpx import parse_httpx
-from graph.nodes.report_utils import update_or_append_section
+from state import PenTestState
+from parsers.tool_httpx import HttpxTool, HttpxPolicy
+from parsers.parse_httpx import parse_httpx
 
 
 def fingerprinting_node(state):
@@ -68,61 +67,6 @@ def fingerprinting(state: PenTestState) -> PenTestState:
     log.append(f"[FINGERPRINTING] httpx accessible: {parsed['urls_accessible']}")
     log.append(f"[FINGERPRINTING] httpx tech stack: {parsed['tech_stack']}")
 
-    # Generate report section for fingerprinting phase
-    report_sections = []
-    section_header = "## Fingerprinting Phase Results"
-    report_sections.append(section_header)
-
-    # Add probe details
-    report_sections.append("\n**Probe Details:**")
-    report_sections.append(f"- **HTTP Ports Identified:** {len(http_ports)}")
-    report_sections.append(f"- **URLs Probed:** {len(targets)}")
-    report_sections.append(f"- **Probe Type:** {'Retry scan' if retry_command else 'Standard HTTP fingerprinting'}")
-    if targets:
-        report_sections.append(f"- **Targets:** {', '.join(targets[:5])}{' ...' if len(targets) > 5 else ''}")
-    report_sections.append("")
-
-    if merged_urls:
-        report_sections.append(f"**Accessible URLs:** {len(merged_urls)}")
-        new_urls = len(parsed["urls_accessible"])
-        if new_urls < len(merged_urls):
-            report_sections.append(f"**New URLs Found:** {new_urls} (previously discovered: {len(merged_urls) - new_urls})")
-        report_sections.append("")
-
-        for url in merged_urls:
-            report_sections.append(f"- {url}")
-
-            # Add fingerprint details if available
-            if url in merged_fingerprint:
-                fp = merged_fingerprint[url]
-                if fp.get("status_code"):
-                    report_sections.append(f"  - Status: {fp['status_code']}")
-                if fp.get("title"):
-                    report_sections.append(f"  - Title: {fp['title']}")
-                if fp.get("server"):
-                    report_sections.append(f"  - Server: {fp['server']}")
-        report_sections.append("")
-    else:
-        report_sections.append("**Result:** No accessible URLs found.")
-
-    if merged_tech:
-        report_sections.append("**Technologies Identified:**")
-        new_tech = len(parsed["tech_stack"])
-        if new_tech < len(merged_tech):
-            report_sections.append(f"*New: {new_tech} | Total: {len(merged_tech)}*")
-        report_sections.append("")
-        for tech in merged_tech:
-            report_sections.append(f"- {tech}")
-        report_sections.append("")
-    else:
-        if merged_urls:
-            report_sections.append("**Technologies:** No specific technologies identified.")
-            report_sections.append("*Note: Web applications may be using custom stacks or obfuscation techniques.*\n")
-        else:
-            report_sections.append("**Technologies:** Cannot identify (no accessible URLs)\n")
-
-    new_report = update_or_append_section(state, section_header, "\n".join(report_sections))
-
     return {
         **state,
         "urls_accessible":  merged_urls,
@@ -130,5 +74,4 @@ def fingerprinting(state: PenTestState) -> PenTestState:
         "retry_command": None,
         "http_fingerprint": merged_fingerprint,
         "action_log":       log,
-        "report": new_report,
     }

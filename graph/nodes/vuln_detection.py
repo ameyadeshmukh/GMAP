@@ -1,8 +1,6 @@
-from graph.state import PenTestState
-from graph.parsers.tool_nuclei import NucleiTool, NucleiPolicy
-from graph.parsers.parse_nuclei import parse_nuclei
-from graph.parsers.severity_normalizer import normalize_finding, get_severity_distribution
-from graph.nodes.report_utils import update_or_append_section
+from state import PenTestState
+from parsers.tool_nuclei import NucleiTool, NucleiPolicy
+from parsers.parse_nuclei import parse_nuclei
 
 
 def vuln_detection(state: PenTestState) -> PenTestState:
@@ -64,87 +62,10 @@ def vuln_detection(state: PenTestState) -> PenTestState:
     
     log.append(f"[VULN_DETECTION] nuclei found {len(new_vulns)} vulnerabilities")
     log.append(f"[VULN_DETECTION] nuclei command: {' '.join(run.args)}")
-
-    # Generate report section for vulnerability detection phase
-    report_sections = []
-    section_header = "## Vulnerability Detection Results"
-    report_sections.append(section_header)
-
-    if merged_vulns:
-        # Add normalized severity scores to each vulnerability
-        scored_vulns = []
-        for vuln in merged_vulns:
-            severity_score = normalize_finding(vuln, "nuclei")
-            vuln_with_score = {**vuln, "normalized_score": severity_score.score, "normalized_level": severity_score.level.value}
-            scored_vulns.append(vuln_with_score)
-
-        # Sort by normalized score (highest first)
-        scored_vulns.sort(key=lambda v: v["normalized_score"], reverse=True)
-
-        # Group by severity
-        severity_groups = {"critical": [], "high": [], "medium": [], "low": [], "info": [], "unknown": []}
-        for vuln in scored_vulns:
-            severity = vuln.get("severity", "unknown").lower()
-            if severity in severity_groups:
-                severity_groups[severity].append(vuln)
-            else:
-                severity_groups["unknown"].append(vuln)
-
-        # Summary with normalized scores
-        report_sections.append(f"\n**Total Vulnerabilities:** {len(merged_vulns)}\n")
-        report_sections.append("**Severity Breakdown:**")
-        for severity in ["critical", "high", "medium", "low", "info"]:
-            count = len(severity_groups[severity])
-            if count > 0:
-                report_sections.append(f"- {severity.upper()}: {count}")
-
-        # Show severity distribution from normalizer
-        severity_dist = get_severity_distribution(merged_vulns, "nuclei")
-        report_sections.append("\n**Normalized Severity Distribution:**")
-        for level in ["critical", "high", "medium", "low", "info"]:
-            if severity_dist[level] > 0:
-                report_sections.append(f"- {level.upper()}: {severity_dist[level]}")
-        report_sections.append("")
-
-        # Detailed findings by severity
-        for severity in ["critical", "high", "medium", "low", "info", "unknown"]:
-            vulns = severity_groups[severity]
-            if not vulns:
-                continue
-
-            report_sections.append(f"### {severity.upper()} Severity Vulnerabilities\n")
-
-            for vuln in vulns:
-                report_sections.append(f"**{vuln.get('name', 'Unknown Vulnerability')}**")
-                report_sections.append(f"- **Template ID:** {vuln.get('template_id', 'N/A')}")
-                report_sections.append(f"- **Normalized Score:** {vuln.get('normalized_score', 'N/A')}/12 ({vuln.get('normalized_level', 'N/A').upper()})")
-                if vuln.get('cve_id'):
-                    report_sections.append(f"- **CVE:** {vuln['cve_id']}")
-                report_sections.append(f"- **URL:** {vuln.get('url', 'N/A')}")
-                if vuln.get('description'):
-                    report_sections.append(f"- **Description:** {vuln['description']}")
-                if vuln.get('cvss_score'):
-                    report_sections.append(f"- **CVSS Score:** {vuln['cvss_score']}")
-                if vuln.get('cwe_id'):
-                    report_sections.append(f"- **CWE:** {vuln['cwe_id']}")
-                report_sections.append("")
-
-        # MSF modules
-        msf_modules = state.get("msf_modules", [])
-        if msf_modules:
-            report_sections.append("**Mapped Metasploit Modules:**\n")
-            for module in msf_modules:
-                report_sections.append(f"- {module}")
-            report_sections.append("")
-    else:
-        report_sections.append("\nNo vulnerabilities detected.\n")
-
-    new_report = update_or_append_section(state, section_header, "\n".join(report_sections))
-
+    
     return {
         **state,
         "vulnerabilities": merged_vulns,
         "retry_command": None,
         "action_log": log,
-        "report": new_report,
     }

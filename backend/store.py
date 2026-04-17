@@ -1,6 +1,6 @@
 import uuid
 from sqlalchemy.orm import Session
-from backend.models import ExecutionTool, JobExecution
+from models import ExecutionTool, JobExecution
 
 # Fixed UUIDs matching the seed data in db/schema.sql
 DEFAULT_TENANT_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")

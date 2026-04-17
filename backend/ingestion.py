@@ -1,10 +1,10 @@
 import ipaddress
 
-from backend.validation import validate_target
-from backend.tasks import run_graph
-from backend.db import get_db
-from backend.models import Target, JobDefinition, JobExecution, ExecutionTool
-from backend.store import DEFAULT_TENANT_ID, GRAPH_TOOL_ID
+from validation import validate_target
+from tasks import run_graph
+from db import get_db
+from models import Target, JobDefinition, JobExecution, ExecutionTool
+from store import DEFAULT_TENANT_ID, GRAPH_TOOL_ID
 
 def _detect_type(target: str) -> str:
     if target.startswith("http://") or target.startswith("https://"):

@@ -1,16 +1,17 @@
 import time
 from datetime import datetime, timezone
-import os
 import sys
-from dotenv import load_dotenv
+import os
+_root = os.path.join(os.path.dirname(__file__), "..")
+sys.path.insert(0, _root)
+sys.path.insert(0, os.path.join(_root, "graph"))
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(BASE_DIR)
 
-from backend.celery_app import app
-from backend.db import get_db
-from backend.models import ExecutionTool, JobExecution, ToolRun
-from backend.store import all_tools_done, any_tool_failed
+from celery_app import app
+from db import get_db
+from models import ExecutionTool, JobExecution, ToolRun
+from store import all_tools_done, any_tool_failed
+from graph import build_graph
 import re
 
 
@@ -87,8 +88,6 @@ def build_json_tool_result(tool_name: str, execution_id: str, status: str, data:
 @app.task
 def run_graph(target_url: str, execution_tool_id: str):
     """Invoke the LangGraph agent for the given target and track it in the DB."""
-    from graph.graph import build_graph
-    # load_dotenv()
 
     with get_db() as db:
         job_execution_id = _mark_running(db, execution_tool_id)
@@ -120,56 +119,12 @@ def run_graph(target_url: str, execution_tool_id: str):
     }
  
     try:
-        graph = build_graph()
-
-        # Stream the graph execution to capture state after each node
-        result = None
-        for event in graph.stream(initial_state):
-            # Each event contains the state after a node completes
-            # event is a dict like {"node_name": state_dict}
-            for node_name, state in event.items():
-                result = state
-
-                # Update the database with intermediate results after each phase
-                # This allows the frontend to poll and see progress
-                intermediate_output = build_json_tool_result(
-                    tool_name="graph",
-                    execution_id=execution_tool_id,
-                    status="running",
-                    data={
-                        "report":          state.get("report", ""),
-                        "action_log":      state.get("action_log", []),
-                        "vulnerabilities": state.get("vulnerabilities", []),
-                        "current_phase":   state.get("current_phase", ""),
-                        "open_ports":      len(state.get("open_ports", [])),
-                        "urls_accessible": len(state.get("urls_accessible", [])),
-                    },
-                )
-
-                # Update the ToolRun with intermediate state
-                with get_db() as db:
-                    et = db.query(ExecutionTool).filter_by(id=execution_tool_id).first()
-                    if et:
-                        # Delete previous ToolRun entries for this execution_tool
-                        db.query(ToolRun).filter_by(execution_tool_id=et.id).delete()
-
-                        # Insert new ToolRun with latest state
-                        db.add(ToolRun(
-                            execution_tool_id=et.id,
-                            input_parameters={"target_url": target_url, "target_host": target_host},
-                            raw_output_json=intermediate_output,
-                            exit_code=0,
-                        ))
-                        db.commit()
-
-        if result is None:
-            raise Exception("Graph execution produced no results")
-
+        result = build_graph().invoke(initial_state)
     except Exception as exc:
         with get_db() as db:
             _mark_failed(db, execution_tool_id, str(exc), job_execution_id)
         raise
-
+ 
     output = build_json_tool_result(
         tool_name="graph",
         execution_id=execution_tool_id,
@@ -178,16 +133,13 @@ def run_graph(target_url: str, execution_tool_id: str):
             "report":          result.get("report", ""),
             "action_log":      result.get("action_log", []),
             "vulnerabilities": result.get("vulnerabilities", []),
-            "current_phase":   result.get("current_phase", ""),
-            "open_ports":      len(result.get("open_ports", [])),
-            "urls_accessible": len(result.get("urls_accessible", [])),
         },
     )
-
+ 
     input_payload = {"target_url": target_url, "target_host": target_host}
-
+ 
     with get_db() as db:
         _mark_done(db, execution_tool_id, output, job_execution_id, input_payload)
-
+ 
     return output
 

@@ -1,7 +1,7 @@
 import uuid
 from sqlalchemy import Column, String, Boolean, Integer, Text, ForeignKey, DateTime, func
 from sqlalchemy.dialects.postgresql import UUID, JSONB
-from backend.db import Base
+from db import Base
 
 
 class Tenant(Base):
