@@ -1,12 +1,17 @@
 import time
 from datetime import datetime, timezone
 import sys
-sys.path.append("/root/capstone/graph")
+import os
+_root = os.path.join(os.path.dirname(__file__), "..")
+sys.path.insert(0, _root)
+sys.path.insert(0, os.path.join(_root, "graph"))
+
 
 from celery_app import app
 from db import get_db
 from models import ExecutionTool, JobExecution, ToolRun
 from store import all_tools_done, any_tool_failed
+from graph import build_graph
 import re
 
 
@@ -14,7 +19,10 @@ import re
 def _extract_host(target_url: str) -> str:
     """Turn the full url into the IP expected by the graph runner."""
     host = re.sub(r"^https?://", "", target_url, flags=re.IGNORECASE)
-    return host.split("/")[0].split(":")[0]
+    host = host.split("/")[0].split(":")[0]
+    if host.lower() == "localhost":
+        host = "127.0.0.1"
+    return host
 
 def _mark_running(db, execution_tool_id: str) -> str:
     """Set execution_tool to running; set parent job_execution to running if still queued.
@@ -56,7 +64,7 @@ def _mark_failed(db, execution_tool_id: str, error: str, job_execution_id: str):
     et = db.query(ExecutionTool).filter_by(id=execution_tool_id).first()
     if et:
         et.status = "failed"
-        et.completed_at = datetime.now(UTC)
+        et.completed_at = datetime.now(timezone.utc)
         db.add(ToolRun(
             execution_tool_id=et.id,
             input_parameters={},
@@ -80,7 +88,6 @@ def build_json_tool_result(tool_name: str, execution_id: str, status: str, data:
 @app.task
 def run_graph(target_url: str, execution_tool_id: str):
     """Invoke the LangGraph agent for the given target and track it in the DB."""
-    from graph import build_graph
 
     with get_db() as db:
         job_execution_id = _mark_running(db, execution_tool_id)

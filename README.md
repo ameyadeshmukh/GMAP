@@ -10,7 +10,7 @@ Autonomous agentic system integrating cybersecurity tools to automate vulnerabil
 
 - Run the streamlit frontend using streamlit run app.py
 
-- Run the celery app with this command 'celery -A celery_app worker --loglevel=info' in '/backend' folder
+- Run the celery app with this command 'PYTHONPATH=backend celery -A backend.celery_app worker --pool=solo --loglevel=info' in the root GMAP folder
 
 - Run the Fastapi app with 'uvicorn api:app --reload' in '/backend' folder
 
