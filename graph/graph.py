@@ -1,12 +1,12 @@
 from langgraph.graph import StateGraph, END
-from state import PenTestState
-from nodes.orchestrator import orchestrator
-from nodes.discovery import discovery
-from nodes.fingerprinting import fingerprinting
-from nodes.vuln_detection import vuln_detection
-from nodes.review import review
-from nodes.exploitation import exploitation
-from nodes.documentation import documentation
+from graph.state import PenTestState
+from graph.nodes.orchestrator import orchestrator
+from graph.nodes.discovery import discovery
+from graph.nodes.fingerprinting import fingerprinting
+from graph.nodes.vuln_detection import vuln_detection
+from graph.nodes.review import review
+from graph.nodes.exploitation import exploitation
+from graph.nodes.documentation import documentation
 
 """
     builds the graph and the workflow for execution.

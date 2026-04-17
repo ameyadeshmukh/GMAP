@@ -1,6 +1,7 @@
-from state import PenTestState
-from parsers.tool_nmap import NmapTool, ScanPolicy
-from parsers.parse_nmap import normalize_nmap_xml_to_json
+from graph.state import PenTestState
+from graph.parsers.tool_nmap import NmapTool, ScanPolicy
+from graph.parsers.parse_nmap import normalize_nmap_xml_to_json
+from graph.nodes.report_utils import update_or_append_section, generate_report_header
 
 """
     first phase of pentesting, runs nmap to discover open ports and services
@@ -57,9 +58,40 @@ def discovery(state: PenTestState) -> PenTestState:
     log.append(f"[DISCOVERY] nmap found {len(new_ports)} open ports on {target}")
     log.append(f"[DISCOVERY] nmap command: {' '.join(run.args)}")
 
+    # Generate report section for discovery phase
+    report_sections = []
+
+    # Add header if this is the first phase (no existing report)
+    if not state.get("report"):
+        report_sections.append(generate_report_header(state))
+
+    section_header = "## Discovery Phase Results"
+    report_sections.append(section_header)
+
+    if merged_ports:
+        report_sections.append(f"\n**Total Open Ports:** {len(merged_ports)}\n")
+        report_sections.append("| Port | Protocol | Service | Version | IP |")
+        report_sections.append("|------|----------|---------|---------|-----|")
+
+        sorted_ports = sorted(merged_ports, key=lambda p: p.get("port", 0))
+        for port in sorted_ports:
+            report_sections.append(
+                f"| {port.get('port', 'N/A')} | "
+                f"{port.get('protocol', 'N/A')} | "
+                f"{port.get('service', 'N/A')} | "
+                f"{port.get('version', 'N/A')} | "
+                f"{port.get('ip', 'N/A')} |"
+            )
+        report_sections.append("")
+    else:
+        report_sections.append("\nNo open ports discovered.\n")
+
+    new_report = update_or_append_section(state, section_header, "\n".join(report_sections))
+
     return {
         **state,
         "open_ports": merged_ports,
         "retry_command": None,
         "action_log": log,
+        "report": new_report,
     }
