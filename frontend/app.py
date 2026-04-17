@@ -56,10 +56,12 @@ st.set_page_config(page_title="GMAP Scanner", page_icon="🔒")
 st.title("GMAP Scanner")
 settings = Settings(api_base_url=_default_api_base_url(), timeout_s=30)
 
-if "job_id"     not in st.session_state: st.session_state.job_id     = None
-if "job_status" not in st.session_state: st.session_state.job_status = None
-if "report"     not in st.session_state: st.session_state.report     = None
-if "polling"    not in st.session_state: st.session_state.polling    = False
+if "job_id"        not in st.session_state: st.session_state.job_id        = None
+if "job_status"    not in st.session_state: st.session_state.job_status    = None
+if "report"        not in st.session_state: st.session_state.report        = None
+if "polling"       not in st.session_state: st.session_state.polling       = False
+if "current_phase" not in st.session_state: st.session_state.current_phase = None
+if "scan_stats"    not in st.session_state: st.session_state.scan_stats    = {}
 
 target_url = st.text_input(
     "Scan Target",
@@ -73,18 +75,20 @@ if st.button("Submit Scan", type="primary"):
         try:
             with st.spinner("Submitting scan..."):
                 resp = api_post(settings, "/targets", json={"target_url": target_url})
- 
+
             payload = _safe_json(resp)
             if resp.ok:
-                st.session_state.job_id     = payload.get("job_id")
-                st.session_state.job_status = "queued"
-                st.session_state.report     = None
-                st.session_state.polling    = True
+                st.session_state.job_id        = payload.get("job_id")
+                st.session_state.job_status    = "queued"
+                st.session_state.report        = None
+                st.session_state.polling       = True
+                st.session_state.current_phase = None
+                st.session_state.scan_stats    = {}
                 st.success(f"Scan started with Job ID: `{st.session_state.job_id}`")
             else:
                 st.error(f"Rejected: HTTP {resp.status_code}")
                 st.json(payload)
- 
+
         except requests.exceptions.ConnectionError:
             st.error(f"Could not reach the backend at `{settings.api_base_url}`.")
         except requests.exceptions.Timeout:
@@ -93,35 +97,85 @@ if st.button("Submit Scan", type="primary"):
             st.error(f"Something went wrong: {e}")
 
 
-if st.session_state.job_id and st.session_state.report is None:
+# Polling and display logic
+if st.session_state.job_id:
     try:
         resp = api_get(settings, f"/jobs/{st.session_state.job_id}")
         if resp.ok:
             payload = _safe_json(resp)
             st.session_state.job_status = payload.get("status", "unknown")
- 
-            # pull report out of the graph tool run output
+
+            # Pull report out of the graph tool run output
             tools = payload.get("tools", [])
             for tool in tools:
                 output = tool.get("output") or {}
                 data = output.get("data", {})
+
+                # Update report (even if partial/in-progress)
                 report = data.get("report", "")
                 if report:
                     st.session_state.report = report
+
+                # Update current phase and stats
+                current_phase = data.get("current_phase", "")
+                if current_phase:
+                    st.session_state.current_phase = current_phase
+
+                st.session_state.scan_stats = {
+                    "open_ports": data.get("open_ports", 0),
+                    "urls_accessible": data.get("urls_accessible", 0),
+                    "vulnerabilities": len(data.get("vulnerabilities", [])),
+                }
+
+                # Stop polling when job is terminal and we have final report
+                tool_status = output.get("status", "")
+                if tool_status == "success":
                     st.session_state.polling = False
                     break
- 
+
     except Exception as e:
         st.error(f"Error checking job: {e}")
- 
+
+    # Display scan progress
     if st.session_state.polling and st.session_state.job_status not in TERMINAL:
-        st.info(f"⏳ Scan in progress (status: {st.session_state.job_status})...")
-        time.sleep(5)
+        # Show current phase with nice formatting
+        phase_display = st.session_state.current_phase or "initializing"
+        st.info(f"**Scan in progress** (phase: `{phase_display}`)")
+
+        # Show stats in columns
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Open Ports", st.session_state.scan_stats.get("open_ports", 0))
+        with col2:
+            st.metric("URLs Found", st.session_state.scan_stats.get("urls_accessible", 0))
+        with col3:
+            st.metric("Vulnerabilities", st.session_state.scan_stats.get("vulnerabilities", 0))
+
+        # Display the report as it builds (live updates)
+        if st.session_state.report:
+            st.divider()
+            st.subheader("Updating Report... (scroll down to view live updates)")
+            st.markdown(st.session_state.report)
+
+        time.sleep(3)  # Poll every 3 seconds
         st.rerun()
+
     elif st.session_state.job_status in TERMINAL and not st.session_state.report:
         st.warning("Scan finished but no report was found.")
- 
-# show report 
-if st.session_state.report:
+
+# Show final report when complete
+if st.session_state.report and not st.session_state.polling:
+    st.success("**Scan Complete!**")
+
+    # Show final stats
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Open Ports", st.session_state.scan_stats.get("open_ports", 0))
+    with col2:
+        st.metric("URLs Found", st.session_state.scan_stats.get("urls_accessible", 0))
+    with col3:
+        st.metric("Vulnerabilities", st.session_state.scan_stats.get("vulnerabilities", 0))
+
     st.divider()
+    st.subheader("Final Report:")
     st.markdown(st.session_state.report)

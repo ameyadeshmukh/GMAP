@@ -71,20 +71,23 @@ VULHUB_EXPLOIT_CATALOG = [
         rank=100,
     ),
 
-    # Struts2 RCE
-    VulhubExploitRule(
-        rule_id="struts2_rce",
-        scenario="struts2/s2-045",
-        source_lab="vulhub",
-        cve="CVE-2017-5638",
-        service="http",
-        product="struts",
-        version=None,
-        port=8080,
-        module="exploit/multi/http/struts2_content_type_ognl",
-        required_options=["RHOSTS"],
-        rank=100,
-    ),
+# Struts2 RCE
+VulhubExploitRule(
+    rule_id="struts2_rce",
+    scenario="struts2/s2-045",
+    source_lab="vulhub",
+    cve="CVE-2017-5638",
+    service="http",
+    product="struts",
+    version=None,
+    port=8080,
+    module="exploit/multi/http/struts2_content_type_ognl",
+    required_options=["RHOSTS"],
+    default_options={
+    "TARGETURI": "/"
+},
+    rank=100,
+),
 
     # Tomcat Manager
     VulhubExploitRule(
@@ -102,4 +105,23 @@ VULHUB_EXPLOIT_CATALOG = [
         requires_approval=True,
         rank=80,
     ),
+
+    # Grafana CVE-2021-43798
+VulhubExploitRule(
+    rule_id="grafana_2021_43798",
+    scenario="grafana/CVE-2021-43798",
+    source_lab="vulhub",
+    cve="CVE-2021-43798",
+    service="http",
+    product="grafana",
+    version=None,
+    port=3000,
+    module="auxiliary/scanner/http/grafana_plugin_traversal",
+    required_options=["RHOSTS"],
+    default_options={},
+    rank=95,
+    notes="Grafana arbitrary file read via directory traversal; commonly detected via nuclei grafana templates",
+    tags=["grafana", "lfi", "http", "cve-2021-43798"],
+),
+
 ]
