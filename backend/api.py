@@ -13,8 +13,17 @@ class TargetRequest(BaseModel):
     target_url: str
 
 
+class ReviewDecision(BaseModel):
+    decision: str  # approve, skip, abort
+
+
 app = FastAPI(title="GMAP API")
 app.include_router(audit_router)
+
+
+@app.on_event("startup")
+def create_tables():
+    Base.metadata.create_all(bind=engine)
 
 
 @app.get("/")
@@ -71,3 +80,31 @@ def get_job(job_id: str):
             "completed_at": job_exec.completed_at,
             "tools": tools_data
         }
+
+
+@app.get("/jobs/{job_id}/review")
+def get_review(job_id: str):
+    with get_db() as db:
+        req = db.query(ReviewRequest).filter_by(job_execution_id=job_id).first()
+        if not req:
+            raise HTTPException(status_code=404, detail="No pending review for this job")
+        return {
+            "job_id": job_id,
+            "vulnerabilities": req.vulnerabilities,
+            "msf_modules": req.msf_modules,
+            "decision": req.decision,
+        }
+
+
+@app.post("/jobs/{job_id}/review")
+def submit_review(job_id: str, body: ReviewDecision):
+    if body.decision not in ("approve", "skip", "abort"):
+        raise HTTPException(status_code=400, detail="decision must be approve, skip, or abort")
+    with get_db() as db:
+        req = db.query(ReviewRequest).filter_by(job_execution_id=job_id).first()
+        if not req:
+            raise HTTPException(status_code=404, detail="No pending review for this job")
+        if req.decision:
+            raise HTTPException(status_code=409, detail="Decision already submitted")
+        req.decision = body.decision
+    return {"status": "ok", "decision": body.decision}

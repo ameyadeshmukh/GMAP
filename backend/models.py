@@ -80,3 +80,14 @@ class ToolRun(Base):
     stdout_log = Column(Text)
     exit_code = Column(Integer)
     created_at = Column(DateTime(), nullable=False, server_default=func.now())
+
+
+class ReviewRequest(Base):
+    __tablename__ = "review_requests"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    job_execution_id = Column(UUID(as_uuid=True), ForeignKey("job_executions.id", ondelete="CASCADE"), nullable=False, unique=True)
+    vulnerabilities = Column(JSONB, nullable=False, default=list)
+    msf_modules = Column(JSONB, nullable=False, default=list)
+    decision = Column(String(20), nullable=True)  # approve, skip, abort
+    created_at = Column(DateTime(), nullable=False, server_default=func.now())

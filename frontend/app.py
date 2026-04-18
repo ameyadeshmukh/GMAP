@@ -56,10 +56,12 @@ st.set_page_config(page_title="GMAP Scanner", page_icon="🔒")
 st.title("GMAP Scanner")
 settings = Settings(api_base_url=_default_api_base_url(), timeout_s=30)
 
-if "job_id"        not in st.session_state: st.session_state.job_id        = None
-if "job_status"    not in st.session_state: st.session_state.job_status    = None
-if "report"        not in st.session_state: st.session_state.report        = None
-if "polling"       not in st.session_state: st.session_state.polling       = False
+if "job_id"          not in st.session_state: st.session_state.job_id          = None
+if "job_status"      not in st.session_state: st.session_state.job_status      = None
+if "report"          not in st.session_state: st.session_state.report          = None
+if "polling"         not in st.session_state: st.session_state.polling         = False
+if "review_data"     not in st.session_state: st.session_state.review_data     = None
+if "review_decided"  not in st.session_state: st.session_state.review_decided  = False
 if "current_phase" not in st.session_state: st.session_state.current_phase = None
 if "scan_stats"    not in st.session_state: st.session_state.scan_stats    = {}
 
@@ -75,20 +77,22 @@ if st.button("Submit Scan", type="primary"):
         try:
             with st.spinner("Submitting scan..."):
                 resp = api_post(settings, "/targets", json={"target_url": target_url})
-
+ 
             payload = _safe_json(resp)
             if resp.ok:
-                st.session_state.job_id        = payload.get("job_id")
-                st.session_state.job_status    = "queued"
-                st.session_state.report        = None
-                st.session_state.polling       = True
+                st.session_state.job_id         = payload.get("job_id")
+                st.session_state.job_status     = "queued"
+                st.session_state.report         = None
+                st.session_state.polling        = True
+                st.session_state.review_data    = None
+                st.session_state.review_decided = False
                 st.session_state.current_phase = None
                 st.session_state.scan_stats    = {}
                 st.success(f"Scan started with Job ID: `{st.session_state.job_id}`")
             else:
                 st.error(f"Rejected: HTTP {resp.status_code}")
                 st.json(payload)
-
+ 
         except requests.exceptions.ConnectionError:
             st.error(f"Could not reach the backend at `{settings.api_base_url}`.")
         except requests.exceptions.Timeout:
@@ -132,9 +136,119 @@ if st.session_state.job_id:
                 if tool_status == "success":
                     st.session_state.polling = False
                     break
-
+ 
     except Exception as e:
         st.error(f"Error checking job: {e}")
+
+    # Show final report when complete
+    if st.session_state.report and not st.session_state.polling:
+        st.success("**Scan Complete!**")
+
+        # Show final stats
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Open Ports", st.session_state.scan_stats.get("open_ports", 0))
+        with col2:
+            st.metric("URLs Found", st.session_state.scan_stats.get("urls_accessible", 0))
+        with col3:
+            st.metric("Vulnerabilities", st.session_state.scan_stats.get("vulnerabilities", 0))
+
+    # ── Human review panel ────────────────────────────────────────────────────
+    if st.session_state.job_status == "requires_review" and not st.session_state.review_decided:
+        st.divider()
+
+        st.markdown("## 🔍 Human Review Required")
+        st.warning("The agent has finished vulnerability detection and requires your approval before proceeding to exploitation. Review the findings below and choose an action.")
+
+        # Fetch review data once
+        if st.session_state.review_data is None:
+            try:
+                r = api_get(settings, f"/jobs/{st.session_state.job_id}/review")
+                if r.ok:
+                    st.session_state.review_data = _safe_json(r)
+            except Exception:
+                pass
+
+        review = st.session_state.review_data or {}
+        vulns = review.get("vulnerabilities", [])
+        msf   = review.get("msf_modules", [])
+
+        SEVERITY_COLOR = {
+            "critical": "🔴",
+            "high":     "🟠",
+            "medium":   "🟡",
+            "low":      "🔵",
+            "info":     "⚪",
+            "unknown":  "⚪",
+        }
+
+        col_vulns, col_msf = st.columns(2)
+
+        with col_vulns:
+            st.markdown("### Vulnerabilities Found")
+            if vulns:
+                for v in vulns:
+                    severity = (v.get("severity") or "unknown").lower()
+                    icon     = SEVERITY_COLOR.get(severity, "⚪")
+                    cve      = v.get("cve_id") or v.get("template_id", "N/A")
+                    desc     = v.get("description", "")
+                    url      = v.get("url", "")
+                    with st.container(border=True):
+                        st.markdown(f"{icon} **{cve}** `{severity.upper()}`")
+                        if desc:
+                            st.caption(desc)
+                        if url:
+                            st.code(url, language=None)
+            else:
+                st.info("No structured vulnerabilities recorded by nuclei.")
+
+        with col_msf:
+            st.markdown("### Proposed Metasploit Modules")
+            if msf:
+                for m in msf:
+                    with st.container(border=True):
+                        st.code(m, language=None)
+            else:
+                st.info("No Metasploit modules proposed.")
+
+        st.divider()
+        st.markdown("### What would you like to do?")
+
+        def _submit(decision: str):
+            r = api_post(settings, f"/jobs/{st.session_state.job_id}/review",
+                         json={"decision": decision})
+            if r.ok:
+                st.session_state.review_decided = True
+                st.session_state.review_data    = None
+                st.rerun()
+            else:
+                st.error(f"Failed to submit decision: {r.text}")
+
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.markdown("**Approve Exploitation**")
+            st.caption("Run Metasploit modules against the target.")
+            if st.button("Approve", type="primary", use_container_width=True):
+                _submit("approve")
+        with col2:
+            st.markdown("**Skip Exploitation**")
+            st.caption("Skip to report generation without exploiting.")
+            if st.button("Skip", use_container_width=True):
+                _submit("skip")
+        with col3:
+            st.markdown("**Abort Scan**")
+            st.caption("Stop immediately and generate report now.")
+            if st.button("Abort", use_container_width=True):
+                _submit("abort")
+
+    elif st.session_state.job_status == "requires_review" and st.session_state.review_decided:
+        st.info("Decision submitted — waiting for scan to resume...")
+        time.sleep(3)
+        st.rerun()
+
+    elif st.session_state.polling and st.session_state.job_status not in TERMINAL:
+        st.info(f"⏳ Scan in progress (status: {st.session_state.job_status})...")
+        time.sleep(5)
 
     # Display scan progress
     if st.session_state.polling and st.session_state.job_status not in TERMINAL:
@@ -159,22 +273,8 @@ if st.session_state.job_id:
 
         time.sleep(3)  # Poll every 3 seconds
         st.rerun()
-
     elif st.session_state.job_status in TERMINAL and not st.session_state.report:
         st.warning("Scan finished but no report was found.")
-
-# Show final report when complete
-if st.session_state.report and not st.session_state.polling:
-    st.success("**Scan Complete!**")
-
-    # Show final stats
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Open Ports", st.session_state.scan_stats.get("open_ports", 0))
-    with col2:
-        st.metric("URLs Found", st.session_state.scan_stats.get("urls_accessible", 0))
-    with col3:
-        st.metric("Vulnerabilities", st.session_state.scan_stats.get("vulnerabilities", 0))
 
     st.divider()
     st.subheader("Final Report:")

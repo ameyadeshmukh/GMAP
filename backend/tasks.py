@@ -1,8 +1,11 @@
 import time
 from datetime import datetime, timezone
-import os
 import sys
-from dotenv import load_dotenv
+import os
+_root = os.path.join(os.path.dirname(__file__), "..")
+sys.path.insert(0, _root)
+sys.path.insert(0, os.path.join(_root, "graph"))
+
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(BASE_DIR)
@@ -11,6 +14,7 @@ from backend.celery_app import app
 from backend.db import get_db
 from backend.models import ExecutionTool, JobExecution, ToolRun
 from backend.store import all_tools_done, any_tool_failed
+from graph import build_graph
 import re
 
 
@@ -84,8 +88,6 @@ def build_json_tool_result(tool_name: str, execution_id: str, status: str, data:
 @app.task
 def run_graph(target_url: str, execution_tool_id: str):
     """Invoke the LangGraph agent for the given target and track it in the DB."""
-    from graph.graph import build_graph
-    # load_dotenv()
 
     with get_db() as db:
         job_execution_id = _mark_running(db, execution_tool_id)
