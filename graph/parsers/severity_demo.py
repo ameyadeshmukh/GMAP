@@ -4,7 +4,7 @@ Demonstration of Severity Normalization Layer
 Shows how findings from different tools are normalized to a unified 1-12 scale.
 """
 
-from severity_normalizer import normalize_finding, get_severity_distribution
+from graph.parsers.severity_normalizer import normalize_finding, get_severity_distribution
 from pprint import pprint
 
 

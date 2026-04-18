@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 
 import httpx
 
-from parse_httpx import parse_httpx
+from graph.parsers.parse_httpx import parse_httpx
 
 TARGETS = [
     "http://127.0.0.1:8081",

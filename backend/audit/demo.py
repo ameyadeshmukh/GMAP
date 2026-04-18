@@ -4,7 +4,7 @@ Run from the backend/ directory: python -m audit.demo
 """
 import uuid
 import time
-from db import SessionLocal
+from backend.db import SessionLocal
 from .service import audit_write
 
 

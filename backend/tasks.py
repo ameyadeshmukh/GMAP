@@ -1,28 +1,25 @@
+import re
 import time
 from datetime import datetime, timezone
-import sys
-import os
-_root = os.path.join(os.path.dirname(__file__), "..")
-sys.path.insert(0, _root)
-sys.path.insert(0, os.path.join(_root, "graph"))
-
-
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(BASE_DIR)
 
 from backend.celery_app import app
 from backend.db import get_db
 from backend.models import ExecutionTool, JobExecution, ToolRun
 from backend.store import all_tools_done, any_tool_failed
-from graph import build_graph
-import re
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from graph.graph import build_graph
 
 
 
 def _extract_host(target_url: str) -> str:
     """Turn the full url into the IP expected by the graph runner."""
     host = re.sub(r"^https?://", "", target_url, flags=re.IGNORECASE)
-    return host.split("/")[0].split(":")[0]
+    host = host.split("/")[0].split(":")[0]
+    if host.lower() == "localhost":
+        host = "127.0.0.1"
+    return host
 
 def _mark_running(db, execution_tool_id: str) -> str:
     """Set execution_tool to running; set parent job_execution to running if still queued.

@@ -1,7 +1,7 @@
 from pprint import pprint
 
-from tool_nmap import NmapTool, ScanPolicy
-from parse_nmap import normalize_nmap_xml_to_json
+from graph.parsers.tool_nmap import NmapTool, ScanPolicy
+from graph.parsers.parse_nmap import normalize_nmap_xml_to_json
 
 nmap = NmapTool()
 

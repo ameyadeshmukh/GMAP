@@ -140,9 +140,12 @@ if st.session_state.job_id:
     except Exception as e:
         st.error(f"Error checking job: {e}")
 
-    # Show final report when complete
-    if st.session_state.report and not st.session_state.polling:
-        st.success("**Scan Complete!**")
+    # Show final report when complete (not during review or polling)
+    if (st.session_state.report and
+        not st.session_state.polling and
+        st.session_state.job_status not in ["requires_review"]):
+
+        st.success("✅ **Scan Complete!**")
 
         # Show final stats
         col1, col2, col3 = st.columns(3)
@@ -152,6 +155,10 @@ if st.session_state.job_id:
             st.metric("URLs Found", st.session_state.scan_stats.get("urls_accessible", 0))
         with col3:
             st.metric("Vulnerabilities", st.session_state.scan_stats.get("vulnerabilities", 0))
+
+        st.divider()
+        st.subheader("📄 Final Report:")
+        st.markdown(st.session_state.report)
 
     # ── Human review panel ────────────────────────────────────────────────────
     if st.session_state.job_status == "requires_review" and not st.session_state.review_decided:
@@ -246,15 +253,11 @@ if st.session_state.job_id:
         time.sleep(3)
         st.rerun()
 
-    elif st.session_state.polling and st.session_state.job_status not in TERMINAL:
-        st.info(f"⏳ Scan in progress (status: {st.session_state.job_status})...")
-        time.sleep(5)
-
     # Display scan progress
     if st.session_state.polling and st.session_state.job_status not in TERMINAL:
         # Show current phase with nice formatting
         phase_display = st.session_state.current_phase or "initializing"
-        st.info(f"**Scan in progress** (phase: `{phase_display}`)")
+        st.info(f"⌛ **Scan in progress** (phase: `{phase_display}`)")
 
         # Show stats in columns
         col1, col2, col3 = st.columns(3)
@@ -268,14 +271,11 @@ if st.session_state.job_id:
         # Display the report as it builds (live updates)
         if st.session_state.report:
             st.divider()
-            st.subheader("Updating Report... (scroll down to view live updates)")
+            st.subheader("📄 Updating Report... (scroll down to view)")
             st.markdown(st.session_state.report)
 
         time.sleep(3)  # Poll every 3 seconds
         st.rerun()
+
     elif st.session_state.job_status in TERMINAL and not st.session_state.report:
         st.warning("Scan finished but no report was found.")
-
-    st.divider()
-    st.subheader("Final Report:")
-    st.markdown(st.session_state.report)

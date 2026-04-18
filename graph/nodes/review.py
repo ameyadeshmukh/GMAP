@@ -1,11 +1,7 @@
 import time
-import sys
-import os
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "backend"))
-
-from db import get_db
-from models import ReviewRequest, JobExecution
+from backend.db import get_db
+from backend.models import ReviewRequest, JobExecution
 
 REVIEW_TIMEOUT = 600  # 10 minutes
 POLL_INTERVAL = 3

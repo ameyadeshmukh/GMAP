@@ -3,9 +3,9 @@ from pydantic import BaseModel
 from sqlalchemy import desc
 
 from backend.ingestion import ingest_target
-from backend.db import get_db
+from backend.db import get_db, Base, engine
 from backend.store import get_job_execution
-from backend.models import ExecutionTool, ToolRun
+from backend.models import ExecutionTool, ToolRun, ReviewRequest
 from backend.audit.router import router as audit_router
 
 

@@ -1,4 +1,4 @@
-from graph import build_graph
+from graph.graph import build_graph
 from dotenv import load_dotenv
 import uuid
 import sys
