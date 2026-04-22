@@ -4,7 +4,7 @@ from celery_app import app
 from db import get_db
 from models import ExecutionTool, JobExecution, ToolRun
 from store import all_tools_done, any_tool_failed
-
+from celery_app import celery_app
 
 def _mark_running(db, execution_tool_id: str) -> str:
     """Set execution_tool to running; set parent job_execution to running if still queued.
@@ -105,3 +105,8 @@ def run_nuclei(target: str, execution_tool_id: str):
         _mark_done(db, execution_tool_id, result, job_execution_id, input_payload)
 
     return result
+
+
+@celery_app.task(bind=True)
+def run_scan(self, job_execution_id):
+    print(f"Running scan for job {job_execution_id}")

@@ -1,7 +1,10 @@
 import uuid
-from sqlalchemy import Column, String, Boolean, Integer, Text, ForeignKey, DateTime, func, select
+from sqlalchemy import Column, String, Boolean, Integer, Text, ForeignKey, DateTime, func, select, Float
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from db import Base
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+from sqlalchemy import Enum as SqlEnum
 
 
 class Tenant(Base):
@@ -46,6 +49,7 @@ class JobExecution(Base):
     execution_number = Column(Integer, nullable=False)
     started_at = Column(DateTime())
     completed_at = Column(DateTime())
+    findings = relationship("Finding", back_populates="job_execution", cascade="all, delete")
 
 
 class Tool(Base):
@@ -80,3 +84,68 @@ class ToolRun(Base):
     stdout_log = Column(Text)
     exit_code = Column(Integer)
     created_at = Column(DateTime(), nullable=False, server_default=func.now())
+    findings = relationship("Finding", back_populates="tool_run")
+
+severity_label_enum = SqlEnum(
+    "critical",
+    "high",
+    "medium",
+    "low",
+    "informational",
+    name="severity_label_enum",
+    create_type=False  
+)
+
+finding_status_enum = SqlEnum(
+    "open",
+    "validated",
+    "false_positive",
+    "remediated",
+    name="finding_status_enum",
+    create_type=False
+)
+
+class Finding(Base):
+    __tablename__ = "findings"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    job_execution_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("job_executions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    tool_run_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("tool_runs.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    cve_id = Column(String, nullable=True)
+    title = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+
+    severity_score = Column(Float, nullable=True)
+    severity_label = Column(severity_label_enum, nullable=True)
+
+    confidence_score = Column(Float, nullable=True)
+
+    status = Column(
+        finding_status_enum,
+        nullable=False,
+        default="open"
+    )
+
+    discovered_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False
+    )
+
+    job_execution = relationship("JobExecution", back_populates="findings")
+    tool_run = relationship("ToolRun", back_populates="findings")
+
+
+

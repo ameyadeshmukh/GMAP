@@ -1,7 +1,11 @@
 import uuid
-from sqlalchemy import Column, DateTime, String, Text, func, Index
+from sqlalchemy import Column, DateTime, String, Text, func, Index, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from db import Base
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+from sqlalchemy import Enum as SqlEnum
+
 
 class AuditLog(Base):
     __tablename__ = "audit_events"  
@@ -17,3 +21,4 @@ class AuditLog(Base):
     ip_address = Column(String, nullable=False)
     user_agent = Column(String, nullable=False)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+

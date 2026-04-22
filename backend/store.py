@@ -1,6 +1,8 @@
 import uuid
 from sqlalchemy.orm import Session
-from models import ExecutionTool, JobExecution
+from models import ExecutionTool, JobExecution, JobDefinition
+from models import Finding
+from sqlalchemy.orm import Session
 
 def create_job_execution(db: Session, tenant_id: uuid.UUID, target_url: str):
     job = JobExecution(
@@ -24,8 +26,15 @@ def get_tool_by_name(db, name):
 
 
 def get_job_execution(db: Session, job_id: str, tenant_id: uuid.UUID):
-    return db.query(JobExecution).filter(JobExecution.id == job_id, JobExecutionTool.tenant_id == tenant_id).first()
-
+    return (
+        db.query(JobExecution)
+        .join(JobDefinition, JobExecution.job_definition_id == JobDefinition.id)
+        .filter(
+            JobExecution.id == uuid.UUID(job_id),
+            JobDefinition.tenant_id == tenant_id
+        )
+        .first()
+    )
 
 def get_execution_tool(db: Session, execution_tool_id: str, tenant_id: uuid.UUID):
     return db.query(ExecutionTool).filter(ExecutionTool.id == execution_tool_id, ExecutionTool.tenant_id ==tenant_id).first()
@@ -53,4 +62,17 @@ def any_tool_failed(db: Session, job_execution_id: str) -> bool:
         )
         .count()
         > 0
+    )
+
+def get_findings_by_job(db: Session, job_execution_id: str, tenant_id: uuid.UUID):
+    return (
+        db.query(Finding)
+        .join(JobExecution, Finding.job_execution_id == JobExecution.id)
+        .join(JobDefinition, JobExecution.job_definition_id == JobDefinition.id)
+        .filter(
+            JobExecution.id == uuid.UUID(job_execution_id),
+            JobDefinition.tenant_id == tenant_id
+        )
+        .order_by(Finding.discovered_at.desc())
+        .all()
     )
