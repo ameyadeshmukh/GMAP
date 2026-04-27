@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Any
-
+import os
 # creates a catalog of Vulhub related exploits with metadata for matching against the intial discovery results
 @dataclass
 class VulhubExploitRule:
@@ -122,6 +122,27 @@ VulhubExploitRule(
     rank=95,
     notes="Grafana arbitrary file read via directory traversal; commonly detected via nuclei grafana templates",
     tags=["grafana", "lfi", "http", "cve-2021-43798"],
+),
+
+VulhubExploitRule(
+    rule_id="struts2_s2_005",
+    scenario="struts2/s2-005",
+    source_lab="vulhub",
+    cve="CVE-2013-2251",
+    service="http",
+    product="struts",
+    version=None,
+    port=8080,
+    module="exploit/multi/http/struts_default_action_mapper",
+    required_options=["RHOSTS"],
+    default_options={
+        "TARGETURI": "/index.action",
+        "TARGET": "1",  
+        "LHOST": os.getenv("LHOST"),
+    },
+    rank=100,
+    notes="Struts2 DefaultActionMapper OGNL injection via redirect: prefix",
+    tags=["struts2", "ognl", "rce", "cve-2013-2251"],
 ),
 
 ]

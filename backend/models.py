@@ -91,3 +91,5 @@ class ReviewRequest(Base):
     msf_modules = Column(JSONB, nullable=False, default=list)
     decision = Column(String(20), nullable=True)  # approve, skip, abort
     created_at = Column(DateTime(), nullable=False, server_default=func.now())
+    exploit_suggestions = Column(JSONB, default=list)
+
