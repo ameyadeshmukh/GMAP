@@ -3,6 +3,8 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from typing import Any, Dict
+from tools.vulhub_containers import is_vulhub_running, get_vulhub_scenarios,resolve_scenario_path, launch_vulhub, BASE_DIR, VULHUB_DIR
+import subprocess
 import time
 
 import requests
@@ -65,14 +67,84 @@ if "review_decided"  not in st.session_state: st.session_state.review_decided  =
 if "current_phase" not in st.session_state: st.session_state.current_phase = None
 if "scan_stats"    not in st.session_state: st.session_state.scan_stats    = {}
 
-target_url = st.text_input(
-    "Scan Target",
-    placeholder="e.g. http://192.168.1.10:8080 or 192.168.1.10",
+scenarios = get_vulhub_scenarios()
+
+scenario_names = ["Select Option"] + list(scenarios.keys())
+
+selected = st.selectbox(
+    "Select Vulhub Environment",
+    scenario_names,
+    index=0
 )
+
+target_url = ""
+
+# manually enter target url
+if selected == "Select Option":
+    st.info("Select a Vulhub scenario or enter a custom target.")
+
+    target_url = st.text_input(
+        "Scan Target",
+        placeholder="e.g. http://192.168.1.10:8080",
+    )
+
+# select vulhub containers from our catalog
+else:
+    rule = scenarios[selected]
+    selected_running = False
+
+
+    if is_vulhub_running(rule):
+        st.success("Container running")
+        selected_running = True
+    else:
+        st.warning("Container not running")
+        selected_running = False
+
+    col1, col2 = st.columns(2)
+
+    if selected_running == False:
+        with col1:
+            if st.button("Start Vulhub Container"):
+                ok, msg = launch_vulhub(rule)
+
+                if ok:
+                    st.success(msg)
+                    time.sleep(2)
+                    st.rerun()
+                else:
+                    st.error(msg)
+    if selected_running == True:
+        with col2:
+            if st.button("Stop Container"):
+                scenario_path = resolve_scenario_path(rule)
+
+                if scenario_path:
+                    subprocess.Popen(
+                        ["docker", "compose", "down"],
+                        cwd=scenario_path
+                    )
+                    st.warning("Stopped container")
+                    time.sleep(2)
+                    st.rerun()
+
+    # target url from vulhub container
+    if rule.port:
+        target_url = f"http://127.0.0.1:{rule.port}"
+        st.caption(f"Selected target URL: {target_url}")
+    else:
+        target_url = st.text_input("Scan Target)")
  
 if st.button("Submit Scan", type="primary"):
+    if selected != "Select Option":
+        rule = scenarios[selected]
+
+        if not is_vulhub_running(rule):
+            st.error("Vulhub container is not running. Start it before scanning.")
+            st.stop()
     if not target_url.strip():
         st.warning("Please enter a target before submitting.")
+        st.stop()
     else:
         try:
             with st.spinner("Submitting scan..."):

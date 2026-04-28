@@ -6,7 +6,8 @@ Autonomous agentic system integrating cybersecurity tools to automate vulnerabil
 
 - Create a python virtual environment with command 'python -m venv venv' and install dependencies with 'pip install -r requirements.txt'
 
-- Run 'docker compose up -d' to run the redis and redis-commander containers.
+-  Run 'docker compose up -d' to run the redis and redis-commander containers
+  - or run 'docker compose --profile sample-vuln up -d' to run some sample vulnerable containers for testing/demo purposes.
 
 - Run the streamlit frontend using streamlit run app.py:'streamlit run frontend/app.py' in the root GMAP folder
 

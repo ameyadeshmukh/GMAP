@@ -76,13 +76,13 @@ def review(state):
             existing.decision = None
             existing.vulnerabilities = vulnerabilities
             existing.msf_modules = msf_modules 
-            existing.exploit_suggestions = exploit_suggestions
+            #existing.exploit_suggestions = exploit_suggestions
         else:
             db.add(ReviewRequest(
                 job_execution_id=job_id,
                 vulnerabilities=vulnerabilities,
                 msf_modules=msf_modules, 
-                exploit_suggestions=exploit_suggestions,
+                #exploit_suggestions=exploit_suggestions,
     ))
 
     deadline = time.time() + REVIEW_TIMEOUT
