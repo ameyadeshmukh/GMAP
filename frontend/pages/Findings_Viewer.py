@@ -46,6 +46,8 @@ def api_get(settings: Settings, path: str) -> Response:
     return _http_session().get(url, timeout=settings.timeout_s)
 
 
+# ── Severity normalization functions ──────────────────────────────────────────
+
 def _tool_name_from_entry(entry: Dict[str, Any]) -> str:
     tool_id = str(entry.get("tool_id") or "").lower()
     if tool_id == NMAP_TOOL_ID:
@@ -93,8 +95,6 @@ def _normalize_nmap_findings(tool_entry: Dict[str, Any]) -> List[Dict[str, Any]]
     findings: List[Dict[str, Any]] = []
     hosts = payload.get("hosts")
     if not isinstance(hosts, list):
-        # Frontend-only fallback for current backend stub format:
-        # data: {"open_ports": [80, 443, ...]}
         open_ports = payload.get("open_ports")
         if isinstance(open_ports, list) and open_ports:
             input_payload = tool_entry.get("input") if isinstance(tool_entry.get("input"), dict) else {}
@@ -229,129 +229,19 @@ def _collect_findings(job_payload: Dict[str, Any]) -> List[Dict[str, Any]]:
     return findings
 
 
-def _sanitize_job_id(raw_job_id: str) -> str:
-    return raw_job_id.strip().strip('"').strip("'")
-
-
-def _matches_query(finding: Dict[str, Any], query: str) -> bool:
-    if not query:
-        return True
-    q = query.lower()
-    searchable = " ".join(
-        [
-            str(finding.get("tool") or ""),
-            str(finding.get("title") or ""),
-            str(finding.get("description") or ""),
-            str(finding.get("target") or ""),
-            str(finding.get("severity") or ""),
-            str(finding.get("status") or ""),
-            str(finding.get("extra") or ""),
-        ]
-    ).lower()
-    return q in searchable
-
+# ── Page UI ───────────────────────────────────────────────────────────────────
 
 st.set_page_config(page_title="GMAP Findings Viewer", page_icon="🔎")
 st.title("GMAP Findings Viewer")
 
 settings = Settings(api_base_url=_default_api_base_url(), timeout_s=30)
 
-if "findings_job_payload" not in st.session_state:
-    st.session_state["findings_job_payload"] = None
+# Get the report from session state (shared with app.py)
+report = st.session_state.get("report", "")
 
-job_id = st.text_input("Job ID", placeholder="Paste a job UUID")
-left, right = st.columns(2)
-with left:
-    load_clicked = st.button("Load Findings")
-with right:
-    refresh_clicked = st.button("Refresh")
-
-clean_job_id = _sanitize_job_id(job_id)
-
-if (load_clicked or refresh_clicked) and not clean_job_id:
-    st.warning("Enter a job ID first.")
-
-if (load_clicked or refresh_clicked) and clean_job_id:
-    try:
-        with st.spinner("Loading findings..."):
-            response = api_get(settings, f"/jobs/{clean_job_id}")
-        payload = _safe_json(response)
-        if response.ok:
-            st.session_state["findings_job_payload"] = payload
-            st.success(f"Loaded job `{clean_job_id}`")
-        else:
-            st.error(f"Failed to load job: HTTP {response.status_code}")
-            st.json(payload)
-    except requests.exceptions.ConnectionError:
-        st.error(f"Could not reach the backend at `{settings.api_base_url}`.")
-    except requests.exceptions.Timeout:
-        st.error("Request timed out.")
-    except Exception as e:
-        st.error(f"Something went wrong: {e}")
-
-job_payload = st.session_state.get("findings_job_payload")
-if isinstance(job_payload, dict):
-    findings = _collect_findings(job_payload)
-    st.caption(f"Job status: `{job_payload.get('status', 'unknown')}` | Findings: `{len(findings)}`")
-
-    if not findings:
-        st.info("No nmap/httpx findings found for this job payload yet.")
-    else:
-        tool_options = sorted({str(f.get("tool") or "unknown") for f in findings})
-        severity_options = sorted({str(f.get("severity") or "unknown") for f in findings})
-        status_options = sorted({str(f.get("status") or "unknown") for f in findings})
-
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            selected_tools = st.multiselect("Tool", options=tool_options, default=tool_options)
-        with c2:
-            selected_severity = st.multiselect("Severity", options=severity_options, default=severity_options)
-        with c3:
-            selected_status = st.multiselect("Task Status", options=status_options, default=status_options)
-        query = st.text_input(
-            "Search findings", placeholder="service, host, status code, title, technology..."
-        )
-
-        filtered = [
-            f
-            for f in findings
-            if str(f.get("tool") or "unknown") in selected_tools
-            and str(f.get("severity") or "unknown") in selected_severity
-            and str(f.get("status") or "unknown") in selected_status
-            and _matches_query(f, query)
-        ]
-
-        st.write(f"Showing `{len(filtered)}` of `{len(findings)}` findings.")
-        table_rows = [
-            {
-                "id": f["id"],
-                "tool": f["tool"],
-                "severity": f["severity"],
-                "status": f["status"],
-                "target": f["target"],
-                "title": f["title"],
-            }
-            for f in filtered
-        ]
-        st.dataframe(table_rows, use_container_width=True, hide_index=True)
-
-        if filtered:
-            labels = [f"{f['tool']} | {f['target']} | {f['title']}" for f in filtered]
-            selected_label = st.selectbox("Select finding for details", options=labels)
-            selected_finding = filtered[labels.index(selected_label)]
-
-            st.markdown("### Finding Details")
-            details_left, details_right = st.columns(2)
-            with details_left:
-                st.write(f"**Tool:** `{selected_finding['tool']}`")
-                st.write(f"**Severity:** `{selected_finding['severity']}`")
-                st.write(f"**Status:** `{selected_finding['status']}`")
-            with details_right:
-                st.write(f"**Target:** `{selected_finding['target']}`")
-                st.write(f"**Title:** {selected_finding['title']}")
-                st.write(f"**Description:** {selected_finding['description']}")
-
-            st.write("**Parsed fields**")
-            st.json(selected_finding.get("extra", {}))
-            st.write("**Raw finding payload**")
-            st.json(selected_finding.get("raw", {}))
+if report:
+    st.subheader("📄 Penetration Testing Report")
+    st.markdown(report)
+else:
+    st.info("No report available yet. Start a scan from the main page to generate a report.")
+    st.page_link("app.py", label="Go to Scanner", icon="🔒")

@@ -62,8 +62,9 @@ if "report"          not in st.session_state: st.session_state.report          =
 if "polling"         not in st.session_state: st.session_state.polling         = False
 if "review_data"     not in st.session_state: st.session_state.review_data     = None
 if "review_decided"  not in st.session_state: st.session_state.review_decided  = False
-if "current_phase" not in st.session_state: st.session_state.current_phase = None
-if "scan_stats"    not in st.session_state: st.session_state.scan_stats    = {}
+if "current_phase"   not in st.session_state: st.session_state.current_phase   = None
+if "scan_stats"      not in st.session_state: st.session_state.scan_stats      = {}
+if "action_log"      not in st.session_state: st.session_state.action_log      = []
 
 target_url = st.text_input(
     "Scan Target",
@@ -86,8 +87,9 @@ if st.button("Submit Scan", type="primary"):
                 st.session_state.polling        = True
                 st.session_state.review_data    = None
                 st.session_state.review_decided = False
-                st.session_state.current_phase = None
-                st.session_state.scan_stats    = {}
+                st.session_state.current_phase  = None
+                st.session_state.scan_stats     = {}
+                st.session_state.action_log     = []
                 st.success(f"Scan started with Job ID: `{st.session_state.job_id}`")
             else:
                 st.error(f"Rejected: HTTP {resp.status_code}")
@@ -109,7 +111,7 @@ if st.session_state.job_id:
             payload = _safe_json(resp)
             st.session_state.job_status = payload.get("status", "unknown")
 
-            # Pull report out of the graph tool run output
+            # Pull report and action log out of the graph tool run output
             tools = payload.get("tools", [])
             for tool in tools:
                 output = tool.get("output") or {}
@@ -119,6 +121,11 @@ if st.session_state.job_id:
                 report = data.get("report", "")
                 if report:
                     st.session_state.report = report
+
+                # Update action log
+                action_log = data.get("action_log", [])
+                if action_log:
+                    st.session_state.action_log = action_log
 
                 # Update current phase and stats
                 current_phase = data.get("current_phase", "")
@@ -140,7 +147,7 @@ if st.session_state.job_id:
     except Exception as e:
         st.error(f"Error checking job: {e}")
 
-    # Show final report when complete (not during review or polling)
+    # Show final results when complete (not during review or polling)
     if (st.session_state.report and
         not st.session_state.polling and
         st.session_state.job_status not in ["requires_review"]):
@@ -157,8 +164,19 @@ if st.session_state.job_id:
             st.metric("Vulnerabilities", st.session_state.scan_stats.get("vulnerabilities", 0))
 
         st.divider()
-        st.subheader("📄 Final Report:")
-        st.markdown(st.session_state.report)
+
+        # Agent Action Log
+        st.subheader("🤖 Agent Action Log")
+        if st.session_state.action_log:
+            for entry in st.session_state.action_log:
+                st.text(entry)
+        else:
+            st.info("No action log entries recorded.")
+
+        # Link to final report on Findings Viewer page
+        st.divider()
+        if st.button("📄 Click to see final report", use_container_width=True, type="primary"):
+            st.switch_page("pages/Findings_Viewer.py")
 
     # ── Human review panel ────────────────────────────────────────────────────
     if st.session_state.job_status == "requires_review" and not st.session_state.review_decided:
@@ -268,11 +286,18 @@ if st.session_state.job_id:
         with col3:
             st.metric("Vulnerabilities", st.session_state.scan_stats.get("vulnerabilities", 0))
 
-        # Display the report as it builds (live updates)
+        # Agent Action Log (live updates)
+        if st.session_state.action_log:
+            st.divider()
+            st.subheader("🤖 Agent Action Log")
+            for entry in st.session_state.action_log:
+                st.text(entry)
+
+        # Link to view updating report on Findings Viewer page
         if st.session_state.report:
             st.divider()
-            st.subheader("📄 Updating Report... (scroll down to view)")
-            st.markdown(st.session_state.report)
+            if st.button("📄 Click to view updating report", use_container_width=True, type="primary"):
+                st.switch_page("pages/Findings_Viewer.py")
 
         time.sleep(3)  # Poll every 3 seconds
         st.rerun()
