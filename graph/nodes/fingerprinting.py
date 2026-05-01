@@ -20,7 +20,7 @@ def fingerprinting(state: PenTestState) -> PenTestState:
     log = state.get("action_log", [])
 
     # build URL list from ports found in discovery
-    COMMON_HTTP_PORTS = {80, 443, 8080, 8443, 8983, 8888, 8008, 9200, 9000, 3000, 5000}
+    COMMON_HTTP_PORTS = {80, 443, 8080, 8443, 8161, 8983, 8888, 8008, 9200, 9000, 3000, 5000}
 
     http_services = {"http", "https", "http-alt", "ssl/http", "http-proxy"}
 

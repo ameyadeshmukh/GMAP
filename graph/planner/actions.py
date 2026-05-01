@@ -45,6 +45,7 @@ ACTIONS = [
             "With these urls, include tech stack, version numbers, status codes, and accessible URLs. "
             "If probing multiple ports, pass a list with -l instead of -u. "
             "If probing a specific single port, use -u target:port directly."
+            "If there are no HTTP ports, ADVANCE to vuln detection do not abort"
         )
     },
     {
@@ -64,7 +65,8 @@ ACTIONS = [
             "Use the urls_accessible from fingerprinting as targets for this step. "
             "to target specific tech found in fingerprinting, add -tags {tech} "
             "e.g. -tags apache, -tags wordpress, -tags confluence, -tags tomcat. "
-            "If first pass returns no results, try -severity medium,low instead. "
+            "If first pass returns no results, try -severity critical,high,medium,low instead. "
+            "If second pass returns no results, run without any tags"
             "after mapping confirmed CVEs to metasploit modules populate msf_modules in state. "
             "should be ranked based on severity and whether msf module was found"
         )
@@ -86,6 +88,7 @@ ACTIONS = [
             "Present the ranked vulnerabilities and matched msf_modules to the user. "
             "Include the CVE, severity, affected service and port, and msf module. "
             "if decision is approve then proceed to exploitation, "
+            "this phase does not require any commands other than the decision, do not retry"
             "if skipped go straight to documentation"
         )
     },

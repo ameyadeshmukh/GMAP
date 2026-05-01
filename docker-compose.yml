@@ -38,11 +38,27 @@ services:
     depends_on:
       - postgres
 
-#  dvwa:
-#    image: vulnerables/web-dvwa
-#    container_name: gmap_dvwa
-#    ports:
-#      - "9090:80"
+  # sample vulnerble web apps for demo/testing
+  dvwa:
+    image: vulnerables/web-dvwa
+    container_name: gmap_dvwa
+    ports:
+      - "127.0.0.2:8080:80"
+    profiles: ["sample-vuln"]
+
+  juice-shop:
+    image: bkimminich/juice-shop
+    container_name: gmap_juice_shop
+    ports:
+      - "127.0.0.3:3000:3000"
+    profiles: ["sample-vuln"]
+
+  mutillidae:
+    image: citizenstig/nowasp
+    container_name: gmap_mutillidae
+    ports:
+      - "127.0.0.4:8008:80"
+    profiles: ["sample-vuln"]
 
 volumes:
   pgdata:

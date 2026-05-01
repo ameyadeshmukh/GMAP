@@ -5,6 +5,31 @@ from graph.parsers.severity_normalizer import normalize_finding, get_severity_di
 from graph.nodes.report_utils import update_or_append_section
 
 
+TECH_TAG_MAP = {
+    "java": ["struts", "spring", "java", "log4j"],
+    "jetty": ["struts", "spring", "java", "jetty"],
+    "tomcat": ["struts", "spring", "java", "tomcat"],
+    "apache": ["apache", "struts"],
+    "php": ["php", "wordpress", "drupal", "laravel"],
+    "python": ["python", "django", "flask"],
+    "nginx": ["nginx"],
+    "iis": ["iis", "asp"],
+    "grafana": ["grafana"],
+    "jenkins": ["jenkins"],
+    "confluence": ["confluence"],
+    "jboss": ["jboss", "java"],
+    "wordpress": ["wordpress", "wp"],
+}
+
+def _resolve_tags(tech_stack: list) -> list:
+    tags = set()
+    for tech in tech_stack:
+        tech_lower = tech.lower().split(":")[0]  # strip version 
+        for key, mapped_tags in TECH_TAG_MAP.items():
+            if key in tech_lower:
+                tags.update(mapped_tags)
+    return list(tags)
+
 def vuln_detection(state: PenTestState) -> PenTestState:
     """
     third phase, uses nuclei to scan for known vulnerabilities based on 
@@ -32,9 +57,13 @@ def vuln_detection(state: PenTestState) -> PenTestState:
     else:
         # Build policy based on tech stack if available
         tech_stack = state.get("tech_stack", [])
-        tags = [tech.lower() for tech in tech_stack] if tech_stack else []
+        resolved_tags = _resolve_tags(tech_stack)
+
+        policy = NucleiPolicy(tags=resolved_tags) if resolved_tags else NucleiPolicy()
+        #tags = [tech.lower() for tech in tech_stack] if tech_stack else []
         
-        policy = NucleiPolicy(tags=tags) if tags else NucleiPolicy()
+        #policy = NucleiPolicy(tags=tags) if tags else NucleiPolicy()
+        log.append(f"[VULN_DETECTION] targets: {targets}")
         
         run = nuclei.run(
             targets=targets,
@@ -148,3 +177,13 @@ def vuln_detection(state: PenTestState) -> PenTestState:
         "action_log": log,
         "report": new_report,
     }
+
+
+
+
+
+
+
+
+
+
