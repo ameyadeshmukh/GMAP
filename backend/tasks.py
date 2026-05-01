@@ -9,7 +9,6 @@ from backend.store import all_tools_done, any_tool_failed
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from graph.graph import build_graph
 
 
 
@@ -116,6 +115,7 @@ def run_graph(target_url: str, execution_tool_id: str):
     }
  
     try:
+        from graph.graph import build_graph
         graph = build_graph()
 
         # Stream the graph execution to capture state after each node

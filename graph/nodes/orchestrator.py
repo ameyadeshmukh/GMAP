@@ -19,7 +19,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 
 """
 
-#load_dotenv()
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 
 PHASE_ORDER = [
     "discovery",
