@@ -5,7 +5,7 @@ from sqlalchemy import desc
 from backend.ingestion import ingest_target
 from backend.db import get_db, Base, engine
 from backend.store import get_job_execution
-from backend.models import ExecutionTool, ToolRun, ReviewRequest
+from backend.models import ExecutionTool, JobExecution, ToolRun, ReviewRequest
 from backend.audit.router import router as audit_router
 
 
@@ -14,7 +14,7 @@ class TargetRequest(BaseModel):
 
 
 class ReviewDecision(BaseModel):
-    decision: str  # approve, skip, abort
+    decision: str
 
 
 app = FastAPI(title="GMAP API")
@@ -36,6 +36,26 @@ async def submit_target(req: TargetRequest):
     return ingest_target(target_url=req.target_url)
 
 
+@app.get("/jobs")
+def list_jobs(limit: int = 20):
+    with get_db() as db:
+        jobs = (
+            db.query(JobExecution)
+            .order_by(desc(JobExecution.started_at))
+            .limit(limit)
+            .all()
+        )
+        return [
+            {
+                "job_id": str(j.id),
+                "status": j.status,
+                "started_at": j.started_at,
+                "completed_at": j.completed_at,
+            }
+            for j in jobs
+        ]
+
+
 @app.get("/jobs/{job_id}")
 def get_job(job_id: str):
     with get_db() as db:
@@ -50,7 +70,6 @@ def get_job(job_id: str):
             .all()
         )
 
-        # get our structured output for each tool run in the job
         tools_data = []
         for t in tools:
             tool_run = (
@@ -59,7 +78,6 @@ def get_job(job_id: str):
                 .order_by(desc(ToolRun.created_at))
                 .first()
             )
-
             tools_data.append({
                 "execution_tool_id": str(t.id),
                 "tool_id": str(t.tool_id),
@@ -68,7 +86,6 @@ def get_job(job_id: str):
                 "celery_task_id": t.celery_task_id,
                 "started_at": t.started_at,
                 "completed_at": t.completed_at,
-
                 "input": tool_run.input_parameters if tool_run else None,
                 "output": tool_run.raw_output_json if tool_run else None,
             })
@@ -78,7 +95,7 @@ def get_job(job_id: str):
             "status": job_exec.status,
             "started_at": job_exec.started_at,
             "completed_at": job_exec.completed_at,
-            "tools": tools_data
+            "tools": tools_data,
         }
 
 
@@ -91,20 +108,15 @@ def get_review(job_id: str):
         return {
             "job_id": job_id,
             "vulnerabilities": req.vulnerabilities,
-            "msf_modules": req.msf_modules,
             "decision": req.decision,
         }
 
 
 @app.post("/jobs/{job_id}/review")
 def submit_review(job_id: str, body: ReviewDecision):
-    if body.decision not in ("approve", "skip", "abort"):
-        raise HTTPException(status_code=400, detail="decision must be approve, skip, or abort")
     with get_db() as db:
         req = db.query(ReviewRequest).filter_by(job_execution_id=job_id).first()
         if not req:
             raise HTTPException(status_code=404, detail="No pending review for this job")
-        if req.decision:
-            raise HTTPException(status_code=409, detail="Decision already submitted")
         req.decision = body.decision
     return {"status": "ok", "decision": body.decision}

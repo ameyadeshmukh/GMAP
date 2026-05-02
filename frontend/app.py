@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from typing import Any, Dict
-from tools.vulhub_containers import is_vulhub_running, get_vulhub_scenarios,resolve_scenario_path, launch_vulhub, BASE_DIR, VULHUB_DIR
+from tools.vulhub_containers import is_vulhub_running, get_vulhub_scenarios, resolve_scenario_path, launch_vulhub, BASE_DIR, VULHUB_DIR
 import subprocess
 import time
 
@@ -49,10 +49,7 @@ def api_get(settings: Settings, path: str) -> Response:
     url = f"{settings.api_base_url.rstrip('/')}{path}"
     return _http_session().get(url, timeout=settings.timeout_s)
 
-# just to display results here for now 
 TERMINAL = {"completed", "done", "failed", "error"}
-
-
 
 st.set_page_config(page_title="GMAP Scanner", page_icon="🔒")
 st.title("GMAP Scanner")
@@ -68,81 +65,12 @@ if "current_phase"   not in st.session_state: st.session_state.current_phase   =
 if "scan_stats"      not in st.session_state: st.session_state.scan_stats      = {}
 if "action_log"      not in st.session_state: st.session_state.action_log      = []
 
-scenarios = get_vulhub_scenarios()
-
-scenario_names = ["Select Option"] + list(scenarios.keys())
-
-selected = st.selectbox(
-    "Select Vulhub Environment",
-    scenario_names,
-    index=0
+target_url = st.text_input(
+    "Scan Target",
+    placeholder="e.g. http://192.168.1.10:8080",
 )
-
-target_url = ""
-
-# manually enter target url
-if selected == "Select Option":
-    st.info("Select a Vulhub scenario or enter a custom target.")
-
-    target_url = st.text_input(
-        "Scan Target",
-        placeholder="e.g. http://192.168.1.10:8080",
-    )
-
-# select vulhub containers from our catalog
-else:
-    rule = scenarios[selected]
-    selected_running = False
-
-
-    if is_vulhub_running(rule):
-        st.success("Container running")
-        selected_running = True
-    else:
-        st.warning("Container not running")
-        selected_running = False
-
-    col1, col2 = st.columns(2)
-
-    if selected_running == False:
-        with col1:
-            if st.button("Start Vulhub Container"):
-                ok, msg = launch_vulhub(rule)
-
-                if ok:
-                    st.success(msg)
-                    time.sleep(2)
-                    st.rerun()
-                else:
-                    st.error(msg)
-    if selected_running == True:
-        with col2:
-            if st.button("Stop Container"):
-                scenario_path = resolve_scenario_path(rule)
-
-                if scenario_path:
-                    subprocess.Popen(
-                        ["docker", "compose", "down"],
-                        cwd=scenario_path
-                    )
-                    st.warning("Stopped container")
-                    time.sleep(2)
-                    st.rerun()
-
-    # target url from vulhub container
-    if rule.port:
-        target_url = f"http://127.0.0.1:{rule.port}"
-        st.caption(f"Selected target URL: {target_url}")
-    else:
-        target_url = st.text_input("Scan Target)")
- 
+# ── Submit scan ───────────────────────────────────────────────────────────────
 if st.button("Submit Scan", type="primary"):
-    if selected != "Select Option":
-        rule = scenarios[selected]
-
-        if not is_vulhub_running(rule):
-            st.error("Vulhub container is not running. Start it before scanning.")
-            st.stop()
     if not target_url.strip():
         st.warning("Please enter a target before submitting.")
         st.stop()
@@ -150,7 +78,7 @@ if st.button("Submit Scan", type="primary"):
         try:
             with st.spinner("Submitting scan..."):
                 resp = api_post(settings, "/targets", json={"target_url": target_url})
- 
+
             payload = _safe_json(resp)
             if resp.ok:
                 st.session_state.job_id         = payload.get("job_id")
@@ -166,7 +94,7 @@ if st.button("Submit Scan", type="primary"):
             else:
                 st.error(f"Rejected: HTTP {resp.status_code}")
                 st.json(payload)
- 
+
         except requests.exceptions.ConnectionError:
             st.error(f"Could not reach the backend at `{settings.api_base_url}`.")
         except requests.exceptions.Timeout:
@@ -174,8 +102,7 @@ if st.button("Submit Scan", type="primary"):
         except Exception as e:
             st.error(f"Something went wrong: {e}")
 
-
-# Polling and display logic
+# ── Polling and display logic ─────────────────────────────────────────────────
 if st.session_state.job_id:
     try:
         resp = api_get(settings, f"/jobs/{st.session_state.job_id}")
@@ -183,23 +110,19 @@ if st.session_state.job_id:
             payload = _safe_json(resp)
             st.session_state.job_status = payload.get("status", "unknown")
 
-            # Pull report and action log out of the graph tool run output
             tools = payload.get("tools", [])
             for tool in tools:
                 output = tool.get("output") or {}
                 data = output.get("data", {})
 
-                # Update report (even if partial/in-progress)
                 report = data.get("report", "")
                 if report:
                     st.session_state.report = report
 
-                # Update action log
                 action_log = data.get("action_log", [])
                 if action_log:
                     st.session_state.action_log = action_log
 
-                # Update current phase and stats
                 current_phase = data.get("current_phase", "")
                 if current_phase:
                     st.session_state.current_phase = current_phase
@@ -210,23 +133,21 @@ if st.session_state.job_id:
                     "vulnerabilities": len(data.get("vulnerabilities", [])),
                 }
 
-                # Stop polling when job is terminal and we have final report
                 tool_status = output.get("status", "")
                 if tool_status == "success":
                     st.session_state.polling = False
                     break
- 
+
     except Exception as e:
         st.error(f"Error checking job: {e}")
 
-    # Show final results when complete (not during review or polling)
+    # ── Scan complete ─────────────────────────────────────────────────────────
     if (st.session_state.report and
-        not st.session_state.polling and
-        st.session_state.job_status not in ["requires_review"]):
+            not st.session_state.polling and
+            st.session_state.job_status not in ["requires_review"]):
 
         st.success("✅ **Scan Complete!**")
 
-        # Show final stats
         col1, col2, col3 = st.columns(3)
         with col1:
             st.metric("Open Ports", st.session_state.scan_stats.get("open_ports", 0))
@@ -236,28 +157,13 @@ if st.session_state.job_id:
             st.metric("Vulnerabilities", st.session_state.scan_stats.get("vulnerabilities", 0))
 
         st.divider()
-
-        # Agent Action Log
-        st.subheader("🤖 Agent Action Log")
-        if st.session_state.action_log:
-            for entry in st.session_state.action_log:
-                st.text(entry)
-        else:
-            st.info("No action log entries recorded.")
-
-        # Link to final report on Findings Viewer page
-        st.divider()
-        if st.button("📄 Click to see final report", use_container_width=True, type="primary"):
+        if st.button("📄 View Report", use_container_width=True, type="primary"):
             st.switch_page("pages/Findings_Viewer.py")
 
-    # ── Human review panel ────────────────────────────────────────────────────
-    if st.session_state.job_status == "requires_review" and not st.session_state.review_decided:
+        # ── Vulnerabilities with NVD links ────────────────────────────────────
         st.divider()
+        st.subheader("🔍 Vulnerabilities Found")
 
-        st.markdown("## 🔍 Human Review Required")
-        st.warning("The agent has finished vulnerability detection and requires your approval before proceeding to exploitation. Review the findings below and choose an action.")
-
-        # Fetch review data once
         if st.session_state.review_data is None:
             try:
                 r = api_get(settings, f"/jobs/{st.session_state.job_id}/review")
@@ -268,7 +174,6 @@ if st.session_state.job_id:
 
         review = st.session_state.review_data or {}
         vulns = review.get("vulnerabilities", [])
-        msf   = review.get("msf_modules", [])
 
         SEVERITY_COLOR = {
             "critical": "🔴",
@@ -279,77 +184,48 @@ if st.session_state.job_id:
             "unknown":  "⚪",
         }
 
-        col_vulns, col_msf = st.columns(2)
+        if vulns:
+            for v in vulns:
+                severity = (v.get("severity") or "unknown").lower()
+                icon = SEVERITY_COLOR.get(severity, "⚪")
+                cve = v.get("cve_id") or v.get("template_id", "N/A")
+                name = v.get("name", "")
+                desc = v.get("description", "")
+                url = v.get("url", "")
+                nvd_link = v.get("nvd_link")
 
-        with col_vulns:
-            st.markdown("### Vulnerabilities Found")
-            if vulns:
-                for v in vulns:
-                    severity = (v.get("severity") or "unknown").lower()
-                    icon     = SEVERITY_COLOR.get(severity, "⚪")
-                    cve      = v.get("cve_id") or v.get("template_id", "N/A")
-                    desc     = v.get("description", "")
-                    url      = v.get("url", "")
-                    with st.container(border=True):
-                        st.markdown(f"{icon} **{cve}** `{severity.upper()}`")
-                        if desc:
-                            st.caption(desc)
+                with st.container(border=True):
+                    col_title, col_badge = st.columns([4, 1])
+                    with col_title:
+                        st.markdown(f"{icon} **{cve}**" + (f" — {name}" if name else ""))
+                    with col_badge:
+                        st.markdown(f"`{severity.upper()}`")
+                    if desc:
+                        st.caption(desc)
+                    col_url, col_link = st.columns([3, 1])
+                    with col_url:
                         if url:
                             st.code(url, language=None)
-            else:
-                st.info("No structured vulnerabilities recorded by nuclei.")
+                    with col_link:
+                        if nvd_link:
+                            st.link_button("🔗 NVD Details", nvd_link)
+        else:
+            st.info("No vulnerabilities recorded.")
 
-        with col_msf:
-            st.markdown("### Proposed Metasploit Modules")
-            if msf:
-                for m in msf:
-                    with st.container(border=True):
-                        st.code(m, language=None)
-            else:
-                st.info("No Metasploit modules proposed.")
-
+        # ── Agent Action Log ──────────────────────────────────────────────────
         st.divider()
-        st.markdown("### What would you like to do?")
+        st.subheader("🤖 Agent Action Log")
+        if st.session_state.action_log:
+            for entry in st.session_state.action_log:
+                st.text(entry)
+        else:
+            st.info("No action log entries recorded.")
 
-        def _submit(decision: str):
-            r = api_post(settings, f"/jobs/{st.session_state.job_id}/review",
-                         json={"decision": decision})
-            if r.ok:
-                st.session_state.review_decided = True
-                st.session_state.review_data    = None
-                st.rerun()
-            else:
-                st.error(f"Failed to submit decision: {r.text}")
-
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.markdown("**Approve Exploitation**")
-            st.caption("Run Metasploit modules against the target.")
-            if st.button("Approve", type="primary", use_container_width=True):
-                _submit("approve")
-        with col2:
-            st.markdown("**Skip Exploitation**")
-            st.caption("Skip to report generation without exploiting.")
-            if st.button("Skip", use_container_width=True):
-                _submit("skip")
-        with col3:
-            st.markdown("**Abort Scan**")
-            st.caption("Stop immediately and generate report now.")
-            if st.button("Abort", use_container_width=True):
-                _submit("abort")
-
-    elif st.session_state.job_status == "requires_review" and st.session_state.review_decided:
-        st.info("Decision submitted — waiting for scan to resume...")
-        time.sleep(3)
-        st.rerun()
-
-    # Display scan progress
+    # ── Scan in progress ──────────────────────────────────────────────────────
     if st.session_state.polling and st.session_state.job_status not in TERMINAL:
-        # Show current phase with nice formatting
         phase_display = st.session_state.current_phase or "initializing"
         st.info(f"⌛ **Scan in progress** (phase: `{phase_display}`)")
 
-        # Show stats in columns
         col1, col2, col3 = st.columns(3)
         with col1:
             st.metric("Open Ports", st.session_state.scan_stats.get("open_ports", 0))
@@ -358,20 +234,18 @@ if st.session_state.job_id:
         with col3:
             st.metric("Vulnerabilities", st.session_state.scan_stats.get("vulnerabilities", 0))
 
-        # Agent Action Log (live updates)
         if st.session_state.action_log:
             st.divider()
             st.subheader("🤖 Agent Action Log")
             for entry in st.session_state.action_log:
                 st.text(entry)
 
-        # Link to view updating report on Findings Viewer page
         if st.session_state.report:
             st.divider()
-            if st.button("📄 Click to view updating report", use_container_width=True, type="primary"):
+            if st.button("📄 View Report", use_container_width=True, type="primary"):
                 st.switch_page("pages/Findings_Viewer.py")
 
-        time.sleep(3)  # Poll every 3 seconds
+        time.sleep(3)
         st.rerun()
 
     elif st.session_state.job_status in TERMINAL and not st.session_state.report:
