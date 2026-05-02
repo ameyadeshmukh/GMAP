@@ -43,9 +43,19 @@ def vuln_detection(state: PenTestState) -> PenTestState:
     log = state.get("action_log", [])
     
     # Get URLs from fingerprinting phase
-    targets = state.get("urls_accessible", [])
-    if not targets:
-        log.append("[VULN_DETECTION] no accessible URLs found, skipping")
+
+    urls_accessible = state.get("urls_accessible", [])
+    open_ports = state.get("open_ports", [])
+
+    if not urls_accessible and open_ports:
+        # build targets directly from open ports and let nuclei figure out paths
+        for p in open_ports:
+            scheme = "https" if "https" in (p.get("service") or "") else "http"
+            urls_accessible.append(f"{scheme}://{state['target_host']}:{p['port']}")
+        log.append(f"[VULN_DETECTION] no accessible URLs from httpx, falling back to port-based targets: {urls_accessible}")
+
+    if not urls_accessible:
+        log.append("[VULN_DETECTION] no targets available, skipping")
         return {**state, "action_log": log}
     
     # Check for retry command from orchestrator

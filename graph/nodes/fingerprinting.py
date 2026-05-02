@@ -38,12 +38,7 @@ def fingerprinting(state: PenTestState) -> PenTestState:
     for p in http_ports:
         scheme = "https" if "https" in (p.get("service") or "") else "http"
         targets.append(f"{scheme}://{state['target_host']}:{p['port']}")
-    expanded_targets = []
-    for t in targets:
-        expanded_targets.append(t)  # always probe root
-        for path in ["/console", "/h2-console", "/admin", "/manager/html", "/api", "/actuator"]:
-            expanded_targets.append(t.rstrip("/") + path)
-    targets = expanded_targets
+
     retry_command = state.get("retry_command")
 
     if retry_command:

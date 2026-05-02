@@ -1,4 +1,3 @@
-# batch_test.py
 import subprocess
 import requests
 import time
@@ -110,6 +109,7 @@ TARGETS = [
 def stop_container(path):
     cwd = os.path.join(VULHUB, path)
     subprocess.run(["docker", "compose", "down", "-v"], cwd=cwd)
+    time.sleep(8)
 
 def get_container_ip(path):
     cwd = os.path.join(VULHUB, path)

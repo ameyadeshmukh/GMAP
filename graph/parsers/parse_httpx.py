@@ -68,7 +68,7 @@ def parse_httpx(raw_output: str) -> Dict[str, Any]:
         result["endpoints"].append(endpoint)
 
         # Accessible = any response below 400 (includes redirects)
-        if isinstance(status_code, int) and status_code < 500:
+        if isinstance(status_code, int) and status_code < 400:
             result["urls_accessible"].append(url)
 
         # Collect unique technologies across all endpoints
