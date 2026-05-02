@@ -54,9 +54,40 @@ TERMINAL = {"completed", "done", "failed", "error"}
 
 
 
-st.set_page_config(page_title="GMAP Scanner", page_icon="🔒")
+st.set_page_config(page_title="GMAP Scanner", page_icon="🔒", layout="wide")
 st.title("GMAP Scanner")
 settings = Settings(api_base_url=_default_api_base_url(), timeout_s=30)
+
+# ── Scan history sidebar ──────────────────────────────────────────────────────
+with st.sidebar:
+    st.header("Scan History")
+    if st.button("Refresh", use_container_width=True):
+        st.rerun()
+    try:
+        hist_resp = api_get(settings, "/jobs")
+        if hist_resp.ok:
+            jobs = hist_resp.json() if isinstance(hist_resp.json(), list) else []
+            if not jobs:
+                st.caption("No scans yet.")
+            for j in jobs:
+                jid    = j.get("job_id", "")
+                status = j.get("status", "unknown")
+                ts     = (j.get("started_at") or "")[:16].replace("T", " ")
+                status_icon = {"completed": "✅", "failed": "❌", "running": "⏳",
+                               "requires_review": "👁️", "queued": "🕐"}.get(status, "•")
+                label = f"{status_icon} `{jid[:8]}…` {ts}"
+                if st.button(label, key=f"hist_{jid}", use_container_width=True):
+                    st.session_state.job_id         = jid
+                    st.session_state.job_status     = status
+                    st.session_state.report         = None
+                    st.session_state.polling        = status not in TERMINAL
+                    st.session_state.review_data    = None
+                    st.session_state.review_decided = False
+                    st.session_state.current_phase  = None
+                    st.session_state.scan_stats     = {}
+                    st.rerun()
+    except Exception:
+        st.caption("Could not load history.")
 
 if "job_id"          not in st.session_state: st.session_state.job_id          = None
 if "job_status"      not in st.session_state: st.session_state.job_status      = None
@@ -327,11 +358,29 @@ if st.session_state.job_id:
 
     # Display scan progress
     if st.session_state.polling and st.session_state.job_status not in TERMINAL:
-        # Show current phase with nice formatting
-        phase_display = st.session_state.current_phase or "initializing"
-        st.info(f"⌛ **Scan in progress** (phase: `{phase_display}`)")
+        PHASES = ["discovery", "fingerprinting", "vuln_detection", "review", "exploitation", "documentation"]
+        PHASE_LABELS = {
+            "discovery":      "Discovery",
+            "fingerprinting": "Fingerprinting",
+            "vuln_detection": "Vuln Detection",
+            "review":         "Human Review",
+            "exploitation":   "Exploitation",
+            "documentation":  "Report",
+        }
+        current = st.session_state.current_phase or ""
+        current_idx = PHASES.index(current) if current in PHASES else -1
 
-        # Show stats in columns
+        st.markdown("**Scan Progress**")
+        cols = st.columns(len(PHASES))
+        for i, phase in enumerate(PHASES):
+            with cols[i]:
+                if i < current_idx:
+                    st.success(PHASE_LABELS[phase])
+                elif i == current_idx:
+                    st.info(f"⏳ {PHASE_LABELS[phase]}")
+                else:
+                    st.markdown(f"<div style='color:grey;text-align:center'>{PHASE_LABELS[phase]}</div>", unsafe_allow_html=True)
+
         col1, col2, col3 = st.columns(3)
         with col1:
             st.metric("Open Ports", st.session_state.scan_stats.get("open_ports", 0))
@@ -340,13 +389,12 @@ if st.session_state.job_id:
         with col3:
             st.metric("Vulnerabilities", st.session_state.scan_stats.get("vulnerabilities", 0))
 
-        # Display the report as it builds (live updates)
         if st.session_state.report:
             st.divider()
-            st.subheader("📄 Updating Report... (scroll down to view)")
+            st.subheader("📄 Updating Report...")
             st.markdown(st.session_state.report)
 
-        time.sleep(3)  # Poll every 3 seconds
+        time.sleep(3)
         st.rerun()
 
     elif st.session_state.job_status in TERMINAL and not st.session_state.report:

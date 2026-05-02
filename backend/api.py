@@ -5,7 +5,7 @@ from sqlalchemy import desc
 from backend.ingestion import ingest_target
 from backend.db import get_db, Base, engine
 from backend.store import get_job_execution
-from backend.models import ExecutionTool, ToolRun, ReviewRequest
+from backend.models import ExecutionTool, JobExecution, ToolRun, ReviewRequest
 from backend.audit.router import router as audit_router
 
 
@@ -34,6 +34,26 @@ def read_root():
 @app.post("/targets")
 async def submit_target(req: TargetRequest):
     return ingest_target(target_url=req.target_url)
+
+
+@app.get("/jobs")
+def list_jobs(limit: int = 20):
+    with get_db() as db:
+        jobs = (
+            db.query(JobExecution)
+            .order_by(desc(JobExecution.started_at))
+            .limit(limit)
+            .all()
+        )
+        return [
+            {
+                "job_id": str(j.id),
+                "status": j.status,
+                "started_at": j.started_at,
+                "completed_at": j.completed_at,
+            }
+            for j in jobs
+        ]
 
 
 @app.get("/jobs/{job_id}")
