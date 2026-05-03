@@ -54,6 +54,8 @@ def vuln_detection(state: PenTestState) -> PenTestState:
             urls_accessible.append(f"{scheme}://{state['target_host']}:{p['port']}")
         log.append(f"[VULN_DETECTION] no accessible URLs from httpx, falling back to port-based targets: {urls_accessible}")
 
+    targets = urls_accessible
+
     if not urls_accessible:
         log.append("[VULN_DETECTION] no targets available, skipping")
         return {**state, "action_log": log}
