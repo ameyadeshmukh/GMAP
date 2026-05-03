@@ -1,10 +1,10 @@
 import uuid
 import ipaddress
-from models import Tool
-from validation import validate_target
-from tasks import run_nmap, run_nuclei
-from db import get_db
-from models import Target, JobDefinition, JobExecution, ExecutionTool, Tenant
+from backend.models import Tool
+from backend.validation import validate_target
+from backend.tasks import run_nmap, run_nuclei
+from backend.db import get_db
+from backend.models import Target, JobDefinition, JobExecution, ExecutionTool, Tenant
 
 
 

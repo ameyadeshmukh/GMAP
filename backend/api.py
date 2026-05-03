@@ -4,21 +4,21 @@ from typing import List
 from sqlalchemy import desc
 import uuid
 #from tasks import run_metasploit, run_semgrep, run_langgraph
-from ingestion import ingest_target
-from db import get_db
-from store import get_job_execution
-from models import ExecutionTool, ToolRun
-from audit.router import router as audit_router
-from store import get_findings_by_job
-from models import Finding
-from tasks import run_scan
+from backend.ingestion import ingest_target
+from backend.db import get_db
+from backend.store import get_job_execution
+from backend.models import ExecutionTool, ToolRun
+from backend.audit.router import router as audit_router
+from backend.store import get_findings_by_job
+from backend.models import Finding
+from backend.tasks import run_scan
 
 class TargetRequest(BaseModel):
     target_url: str
     tenant_id: str
 
 class Vulnerability(BaseModel):
-    cve: str = Field(..., example="CVE-2024-1234")
+    cve: str = Field(..., json_schema_extra={"example": "CVE-2024-1234"})
     severity: str = Field(..., example="high")
 
 class ScanOutput(BaseModel):

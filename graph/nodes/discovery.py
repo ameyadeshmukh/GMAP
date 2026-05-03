@@ -1,6 +1,6 @@
-from state import PenTestState
-from parsers.tool_nmap import NmapTool, ScanPolicy
-from parsers.parse_nmap import normalize_nmap_xml_to_json
+from graph.state import PenTestState
+from graph.parsers.tool_nmap import NmapTool, ScanPolicy
+from graph.parsers.parse_nmap import normalize_nmap_xml_to_json
 
 """
     first phase of pentesting, runs nmap to discover open ports and services

@@ -1,6 +1,6 @@
 import uuid
 from fastapi import APIRouter, HTTPException, Query
-from db import get_db
+from backend.db import get_db
 from .models import AuditLog
 
 router = APIRouter(prefix="/audit", tags=["audit"])

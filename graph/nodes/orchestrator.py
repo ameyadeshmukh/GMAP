@@ -2,7 +2,7 @@ import json
 from typing import Optional
 import os
 from langchain_openai import ChatOpenAI
-from state import PenTestState
+from graph.state import PenTestState
 from planner.actions import ACTIONS 
 from dotenv import load_dotenv
 from langchain_core.messages import SystemMessage, HumanMessage

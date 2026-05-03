@@ -1,6 +1,6 @@
 from typing import Any, Dict, Optional
 from sqlalchemy.orm import Session
-from .models import AuditLog
+from backend.models import AuditLog
 
 ALLOWED_LEVELS = {"INFO", "WARN", "ERROR"}
 

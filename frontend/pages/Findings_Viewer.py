@@ -260,6 +260,7 @@ if "findings_job_payload" not in st.session_state:
     st.session_state["findings_job_payload"] = None
 
 job_id = st.text_input("Job ID", placeholder="Paste a job UUID")
+tenant_id = st.text_input("Tenant ID", placeholder="Paste a tenant UUID")
 left, right = st.columns(2)
 with left:
     load_clicked = st.button("Load Findings")
@@ -268,13 +269,13 @@ with right:
 
 clean_job_id = _sanitize_job_id(job_id)
 
-if (load_clicked or refresh_clicked) and not clean_job_id:
-    st.warning("Enter a job ID first.")
+if (load_clicked or refresh_clicked) and (not clean_job_id or not tenant_id):
+    st.warning("Enter both job ID and tenant ID first.")
 
-if (load_clicked or refresh_clicked) and clean_job_id:
+if (load_clicked or refresh_clicked) and clean_job_id or tenant_id:
     try:
         with st.spinner("Loading findings..."):
-            response = api_get(settings, f"/jobs/{clean_job_id}")
+            response = api_get(settings, f"/jobs/{clean_job_id}?tenant_id={tenant_id}")
         payload = _safe_json(response)
         if response.ok:
             st.session_state["findings_job_payload"] = payload

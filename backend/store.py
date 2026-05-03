@@ -1,7 +1,7 @@
 import uuid
 from sqlalchemy.orm import Session
-from models import ExecutionTool, JobExecution, JobDefinition
-from models import Finding
+from backend.models import ExecutionTool, JobExecution, JobDefinition
+from backend.models import Finding
 from sqlalchemy.orm import Session
 
 def create_job_execution(db: Session, tenant_id: uuid.UUID, target_url: str):
