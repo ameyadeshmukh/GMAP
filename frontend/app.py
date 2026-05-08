@@ -25,7 +25,7 @@ def _default_api_base_url() -> str:
             return str(value)
     except Exception:
         pass
-    return os.getenv("API_BASE_URL", "https://gmap-backend-1014661949781.us-central1.run.app")
+    return os.getenv("API_BASE_URL", "http://34.45.139.188:8080")
 
 
 @st.cache_resource
