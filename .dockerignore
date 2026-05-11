@@ -1,0 +1,13 @@
+.env
+.git
+.venv
+venv
+__pycache__
+*.pyc
+.DS_Store
+frontend
+vulhub
+batch_results
+sprint1
+sprint2
+testing
