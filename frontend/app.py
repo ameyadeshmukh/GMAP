@@ -25,7 +25,7 @@ def _default_api_base_url() -> str:
             return str(value)
     except Exception:
         pass
-    return os.getenv("API_BASE_URL", "http://35.238.198.255:8080")
+    return os.getenv("API_BASE_URL", "https://gmapxyz.fastapicloud.dev")
 
 
 @st.cache_resource
