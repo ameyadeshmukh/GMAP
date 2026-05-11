@@ -4,8 +4,15 @@ from sqlalchemy import desc
 
 from backend.ingestion import ingest_target
 from backend.db import get_db, Base, engine
-from backend.store import get_job_execution
-from backend.models import ExecutionTool, JobExecution, ToolRun, ReviewRequest
+from backend.store import (
+    DEFAULT_TENANT_ID,
+    GRAPH_TOOL_ID,
+    HTTPX_TOOL_ID,
+    NMAP_TOOL_ID,
+    NUCLEI_TOOL_ID,
+    get_job_execution,
+)
+from backend.models import ExecutionTool, JobExecution, ToolRun, ReviewRequest, Tenant, Tool
 from backend.audit.router import router as audit_router
 
 
@@ -24,6 +31,19 @@ app.include_router(audit_router)
 @app.on_event("startup")
 def create_tables():
     Base.metadata.create_all(bind=engine)
+    with get_db() as db:
+        if not db.query(Tenant).filter_by(id=DEFAULT_TENANT_ID).first():
+            db.add(Tenant(id=DEFAULT_TENANT_ID, name="default", subscription_tier="free"))
+
+        seed_tools = [
+            (NMAP_TOOL_ID, "nmap", "7.94", "scanner"),
+            (NUCLEI_TOOL_ID, "nuclei", "3.0", "scanner"),
+            (HTTPX_TOOL_ID, "httpx", "1.3", "scanner"),
+            (GRAPH_TOOL_ID, "graph", "1.0", "scanner"),
+        ]
+        for tool_id, name, version, category in seed_tools:
+            if not db.query(Tool).filter_by(id=tool_id).first():
+                db.add(Tool(id=tool_id, name=name, version=version, category=category))
 
 
 @app.get("/")
