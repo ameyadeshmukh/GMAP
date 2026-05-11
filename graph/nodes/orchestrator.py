@@ -33,9 +33,8 @@ PHASE_ORDER = [
 ACTION_MAP = {a["id"]: a for a in ACTIONS}
 
 llm = ChatOpenAI(
-    model="gpt-oss-120b",
+    model="gpt-4o",  # change to a real OpenAI model
     api_key=os.getenv("OPENAI_API_KEY"),
-    base_url="https://llm-api.arc.vt.edu/api/v1"
 )
 
 SYSTEM_PROMPT = """You are the orchestrator of an autonomous penetration testing pipeline.
